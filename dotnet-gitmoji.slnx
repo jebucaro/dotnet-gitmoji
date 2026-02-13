@@ -1,0 +1,4 @@
+<Solution>
+    <Project Path="tests/DotnetGitmoji.Tests/DotnetGitmoji.Tests.csproj"/>
+    <Project Path="src/DotnetGitmoji/DotnetGitmoji.csproj"/>
+</Solution>
