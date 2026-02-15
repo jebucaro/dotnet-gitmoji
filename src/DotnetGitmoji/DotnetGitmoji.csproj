@@ -15,4 +15,8 @@
         <PackageReference Include="Spectre.Console"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Models\" />
+    </ItemGroup>
+
 </Project>
