@@ -16,13 +16,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Models\" />
-      <Folder Include="Resources\" />
+        <Folder Include="Models\"/>
+        <Folder Include="Resources\"/>
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="Resources\gitmojis.default.json" />
-      <EmbeddedResource Include="Resources\gitmojis.default.json" />
+        <None Remove="Resources\gitmojis.default.json"/>
+        <EmbeddedResource Include="Resources\gitmojis.default.json"/>
     </ItemGroup>
 
 </Project>

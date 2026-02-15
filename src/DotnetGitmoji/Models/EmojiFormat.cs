@@ -2,6 +2,6 @@ namespace DotnetGitmoji.Models;
 
 public enum EmojiFormat
 {
-    Unicode,   // 🐛
-    Shortcode  // :bug:
+    Unicode, // 🐛
+    Shortcode // :bug:
 }
