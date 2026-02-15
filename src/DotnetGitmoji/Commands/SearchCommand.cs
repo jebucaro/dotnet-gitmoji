@@ -24,9 +24,11 @@ public sealed class SearchCommand : ICommand
     {
         var results = await _gitmojiProvider.SearchAsync(Keyword);
 
+        var escapedKeyword = Markup.Escape(Keyword);
+
         if (results.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[grey]No gitmojis found matching '[white]{Keyword}[/]'.[/]");
+            AnsiConsole.MarkupLine($"[grey]No gitmojis found matching '[white]{escapedKeyword}[/]'.[/]");
             return;
         }
 
@@ -36,9 +38,9 @@ public sealed class SearchCommand : ICommand
             .AddColumn("Description");
 
         foreach (var g in results)
-            table.AddRow(g.Emoji, g.Code, g.Description);
+            table.AddRow(Markup.Escape(g.Emoji), Markup.Escape(g.Code), Markup.Escape(g.Description));
 
-        AnsiConsole.MarkupLine($"[grey]Found {results.Count} gitmoji(s) matching '[white]{Keyword}[/]':[/]");
+        AnsiConsole.MarkupLine($"[grey]Found {results.Count} gitmoji(s) matching '[white]{escapedKeyword}[/]':[/]");
         AnsiConsole.Write(table);
     }
 }

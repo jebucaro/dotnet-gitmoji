@@ -25,7 +25,7 @@ public sealed class ListCommand : ICommand
             .AddColumn("Description");
 
         foreach (var g in gitmojis)
-            table.AddRow(g.Emoji, g.Code, g.Description);
+            table.AddRow(Markup.Escape(g.Emoji), Markup.Escape(g.Code), Markup.Escape(g.Description));
 
         AnsiConsole.Write(table);
     }

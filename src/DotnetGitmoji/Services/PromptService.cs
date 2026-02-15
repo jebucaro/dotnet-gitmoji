@@ -14,7 +14,7 @@ public sealed class PromptService : IPromptService
                 .Title("Choose a gitmoji:")
                 .PageSize(15)
                 .MoreChoicesText("[grey]Scroll for more...[/]")
-                .UseConverter(g => $"{g.Emoji} - {g.Description}")
+                .UseConverter(g => $"{g.Emoji} - {Markup.Escape(g.Description)}")
                 .AddChoices(gitmojis));
 
         return selected;
@@ -22,7 +22,9 @@ public sealed class PromptService : IPromptService
 
     public string? AskScope()
     {
-        var scope = AnsiConsole.Ask<string?>("[grey]Enter scope (optional, press Enter to skip):[/]");
+        var scope = AnsiConsole.Prompt(
+            new TextPrompt<string>("[grey]Enter scope (optional, press Enter to skip):[/]")
+                .AllowEmpty());
         return string.IsNullOrWhiteSpace(scope) ? null : scope.Trim();
     }
 
