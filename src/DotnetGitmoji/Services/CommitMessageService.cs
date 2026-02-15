@@ -4,21 +4,28 @@ public sealed class CommitMessageService : ICommitMessageService
 {
     public async Task<string> ReadMessageAsync(string commitMsgFilePath)
     {
-        var lines = await File.ReadAllLinesAsync(commitMsgFilePath);
+        var fullPath = Path.GetFullPath(commitMsgFilePath);
+        if (!fullPath.Contains(Path.DirectorySeparatorChar + ".git" + Path.DirectorySeparatorChar))
+            throw new ArgumentException("Commit message file must be within .git directory.");
+
+        var lines = await File.ReadAllLinesAsync(fullPath);
         return lines.Length > 0 ? lines[0] : string.Empty;
     }
 
     public async Task WriteMessageAsync(string commitMsgFilePath, string newMessage)
     {
-        var lines = await File.ReadAllLinesAsync(commitMsgFilePath);
+        var fullPath = Path.GetFullPath(commitMsgFilePath);
+        if (!fullPath.Contains(Path.DirectorySeparatorChar + ".git" + Path.DirectorySeparatorChar))
+            throw new ArgumentException("Commit message file must be within .git directory.");
+        var lines = await File.ReadAllLinesAsync(fullPath);
         if (lines.Length == 0)
         {
-            await File.WriteAllTextAsync(commitMsgFilePath, newMessage);
+            await File.WriteAllTextAsync(fullPath, newMessage);
             return;
         }
 
         lines[0] = newMessage;
         var contents = string.Join(Environment.NewLine, lines);
-        await File.WriteAllTextAsync(commitMsgFilePath, contents);
+        await File.WriteAllTextAsync(fullPath, contents);
     }
 }
