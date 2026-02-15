@@ -5,7 +5,14 @@ namespace DotnetGitmoji.Services;
 
 public sealed class ConfigurationService : IConfigurationService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions ReadOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly JsonSerializerOptions WriteOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true
+    };
+
     private readonly IGitService _gitService;
 
     public ConfigurationService(IGitService gitService)
@@ -30,15 +37,33 @@ public sealed class ConfigurationService : IConfigurationService
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
-        await using var stream = File.Create(DotnetGitmojiPaths.GlobalConfigPath);
-        await JsonSerializer.SerializeAsync(stream, config, JsonOptions);
+        try
+        {
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await using var stream = File.Create(DotnetGitmojiPaths.GlobalConfigPath);
+            await JsonSerializer.SerializeAsync(stream, config, WriteOptions);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine(
+                $"Error: Permission denied writing config to {DotnetGitmojiPaths.GlobalConfigPath}. " +
+                "Check file/directory permissions.");
+            throw;
+        }
     }
 
     private static async Task<ToolConfiguration> LoadFromPathAsync(string path)
     {
-        await using var stream = File.OpenRead(path);
-        var config = await JsonSerializer.DeserializeAsync<ToolConfiguration>(stream, JsonOptions);
-        return config ?? new ToolConfiguration();
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            var config = await JsonSerializer.DeserializeAsync<ToolConfiguration>(stream, ReadOptions);
+            return config ?? new ToolConfiguration();
+        }
+        catch (JsonException)
+        {
+            Console.Error.WriteLine($"Warning: Could not parse config at {path}, using defaults.");
+            return new ToolConfiguration();
+        }
     }
 }
