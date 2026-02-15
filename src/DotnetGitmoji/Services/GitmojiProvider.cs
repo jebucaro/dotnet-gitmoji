@@ -25,16 +25,15 @@ public sealed class GitmojiProvider : IGitmojiProvider
 
     public async Task<IReadOnlyList<Gitmoji>> GetAllAsync()
     {
-        if (File.Exists(_cachePath))
-            try
-            {
-                var cached = await LoadFromCacheAsync();
-                if (cached.Gitmojis?.Length > 0) return cached.Gitmojis;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
-            {
-                // Corrupted cache; fall through to next fallback.
-            }
+        try
+        {
+            var cached = await LoadFromCacheAsync();
+            if (cached.Gitmojis?.Length > 0) return cached.Gitmojis;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // Cache missing or corrupted; fall through to next fallback.
+        }
 
         var fetched = await TryFetchFromApiAsync();
         if (fetched?.Gitmojis?.Length > 0)
@@ -96,8 +95,11 @@ public sealed class GitmojiProvider : IGitmojiProvider
     {
         try
         {
+            if (!Uri.TryCreate(_config.GitmojisUrl, UriKind.Absolute, out var uri) || uri.Scheme != "https")
+                return null;
+
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            return await _httpClient.GetFromJsonAsync<GitmojiResponse>(_config.GitmojisUrl, JsonOptions, cts.Token);
+            return await _httpClient.GetFromJsonAsync<GitmojiResponse>(uri, JsonOptions, cts.Token);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
