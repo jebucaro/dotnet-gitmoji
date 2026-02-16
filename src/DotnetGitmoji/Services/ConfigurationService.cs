@@ -23,11 +23,22 @@ public sealed class ConfigurationService : IConfigurationService
     public async Task<ToolConfiguration> LoadAsync()
     {
         var repoRoot = await _gitService.GetRepositoryRootAsync();
-        var repoConfigPath = Path.Combine(repoRoot, ".gitmojirc.json");
+
+        // Walk from repo root upward looking for .gitmojirc.json
+        var dir = new DirectoryInfo(repoRoot);
+        while (dir is not null)
+            try
+            {
+                var configPath = Path.Combine(dir.FullName, ".gitmojirc.json");
+                if (File.Exists(configPath)) return await LoadFromPathAsync(configPath);
+                dir = dir.Parent;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                break; // Can't access this directory, stop walking
+            }
+
         var globalConfigPath = DotnetGitmojiPaths.GlobalConfigPath;
-
-        if (File.Exists(repoConfigPath)) return await LoadFromPathAsync(repoConfigPath);
-
         if (File.Exists(globalConfigPath)) return await LoadFromPathAsync(globalConfigPath);
 
         return new ToolConfiguration();

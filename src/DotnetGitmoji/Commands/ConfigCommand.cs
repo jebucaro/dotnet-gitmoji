@@ -33,11 +33,13 @@ public sealed class ConfigCommand : ICommand
         var scopePrompt = AnsiConsole.Confirm("Prompt for scope?", config.ScopePrompt);
         var messagePrompt = AnsiConsole.Confirm("Prompt for commit message?", config.MessagePrompt);
         var capitalizeTitle = AnsiConsole.Confirm("Capitalize commit title?", config.CapitalizeTitle);
+        var autoAdd = AnsiConsole.Confirm("Auto-add changes before commit? (client mode only)", config.AutoAdd);
 
         config.EmojiFormat = emojiFormat;
         config.ScopePrompt = scopePrompt;
         config.MessagePrompt = messagePrompt;
         config.CapitalizeTitle = capitalizeTitle;
+        config.AutoAdd = autoAdd;
 
         await _configurationService.SaveAsync(config);
         await console.Output.WriteLineAsync("Configuration saved.");

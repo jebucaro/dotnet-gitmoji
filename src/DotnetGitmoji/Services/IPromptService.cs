@@ -10,7 +10,7 @@ public interface IPromptService
     bool IsInteractive { get; }
 
     Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis);
-    string? AskScope();
+    string? AskScope(IReadOnlyList<string>? predefinedScopes = null);
     string? AskTitle();
     string? AskMessage();
 }

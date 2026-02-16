@@ -32,6 +32,8 @@ public static class Program
         services.AddTransient<SearchCommand>();
         services.AddTransient<ConfigCommand>();
         services.AddTransient<UpdateCommand>();
+        services.AddTransient<InitCommand>();
+        services.AddTransient<RemoveCommand>();
 
         using var serviceProvider = services.BuildServiceProvider();
 

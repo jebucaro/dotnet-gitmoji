@@ -35,6 +35,9 @@ public sealed class CommitCommand : ICommand
     [CommandOption("scope", 's', Description = "Commit scope")]
     public string? Scope { get; init; }
 
+    [CommandOption("message", 'm', Description = "Commit message body")]
+    public string? Message { get; init; }
+
     public async ValueTask ExecuteAsync(IConsole console)
     {
         if (await _gitService.IsHookInstalledAsync())
@@ -70,8 +73,11 @@ public sealed class CommitCommand : ICommand
                     $"Scope exceeds maximum length of {PromptService.MaxScopeLength} characters.");
         }
 
+        if (config.AutoAdd)
+            await _gitService.StageAllAsync();
+
         var selected = _promptService.SelectGitmoji(gitmojis);
-        var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope() : null);
+        var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
         var title = Title ?? (config.MessagePrompt ? _promptService.AskTitle() : null);
 
         if (string.IsNullOrWhiteSpace(title))
@@ -83,8 +89,17 @@ public sealed class CommitCommand : ICommand
         var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
         var commitMessage = $"{prefix} {scopePart}{title}";
 
+        var body = Message ?? (config.MessagePrompt ? _promptService.AskMessage() : null);
+
+        var args = new List<string> { "commit", "-m", commitMessage };
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            args.Add("-m");
+            args.Add(body);
+        }
+
         await Cli.Wrap("git")
-            .WithArguments(["commit", "-m", commitMessage])
+            .WithArguments(args)
             .WithStandardOutputPipe(PipeTarget.ToStream(console.Output.BaseStream))
             .WithStandardErrorPipe(PipeTarget.ToStream(console.Error.BaseStream))
             .ExecuteAsync();

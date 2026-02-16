@@ -71,7 +71,7 @@ public sealed class HookCommand : ICommand
             : selectedGitmoji.Code;
 
         var scope = config.ScopePrompt
-            ? _promptService.AskScope()
+            ? _promptService.AskScope(config.Scopes)
             : null;
 
         var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
@@ -79,6 +79,13 @@ public sealed class HookCommand : ICommand
             ? char.ToUpper(message[0]) + message[1..]
             : message;
         var newMessage = $"{prefix} {scopePart}{title}";
+
+        if (config.MessagePrompt && _promptService.IsInteractive)
+        {
+            var body = _promptService.AskMessage();
+            if (!string.IsNullOrWhiteSpace(body))
+                newMessage = $"{newMessage}\n\n{body}";
+        }
 
         await _commitMessageService.WriteMessageAsync(CommitMessageFile, newMessage);
     }

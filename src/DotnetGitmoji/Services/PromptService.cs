@@ -27,8 +27,21 @@ public sealed partial class PromptService : IPromptService
         return selected;
     }
 
-    public string? AskScope()
+    public string? AskScope(IReadOnlyList<string>? predefinedScopes = null)
     {
+        if (predefinedScopes is { Count: > 0 })
+        {
+            var choices = new List<string> { "(none)" };
+            choices.AddRange(predefinedScopes);
+
+            var selected = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[grey]Select scope:[/]")
+                    .AddChoices(choices));
+
+            return selected == "(none)" ? null : selected;
+        }
+
         var scope = AnsiConsole.Prompt(
             new TextPrompt<string>("[grey]Enter scope (optional, press Enter to skip):[/]")
                 .AllowEmpty());
