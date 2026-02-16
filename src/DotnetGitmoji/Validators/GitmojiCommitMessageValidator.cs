@@ -8,7 +8,7 @@ public sealed class GitmojiCommitMessageValidator : ICommitMessageValidator
     public ValidationResult Validate(string message, IReadOnlyList<Gitmoji> gitmojis)
     {
         foreach (var g in gitmojis)
-            if (message.StartsWith(g.Emoji))
+            if (message.StartsWith(g.Emoji, StringComparison.Ordinal))
                 return new ValidationResult(true, g, message[g.Emoji.Length..].TrimStart());
 
         var shortcodeMatch = Regex.Match(message, @"^(:[a-z_]+:)\s*");

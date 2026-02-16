@@ -76,8 +76,10 @@ public sealed partial class PromptService : IPromptService
 
         if (title.Length > MaxTitleLength)
         {
-            title = title[..MaxTitleLength];
-            AnsiConsole.MarkupLine($"[yellow]Warning: title truncated to {MaxTitleLength} characters.[/]");
+            var lastSpace = title.LastIndexOf(' ', MaxTitleLength - 1);
+            title = lastSpace > 0 ? title[..lastSpace] : title[..MaxTitleLength];
+            AnsiConsole.MarkupLine(
+                $"[yellow]Warning: title truncated to {title.Length} characters (nearest word boundary).[/]");
         }
 
         return title;

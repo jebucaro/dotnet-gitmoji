@@ -9,7 +9,8 @@ public sealed class CommitMessageService : ICommitMessageService
             throw new ArgumentException("Commit message file must be within .git directory.");
 
         var lines = await File.ReadAllLinesAsync(fullPath);
-        return lines.Length > 0 ? lines[0] : string.Empty;
+        var firstContentLine = lines.FirstOrDefault(l => !l.StartsWith('#'));
+        return firstContentLine ?? string.Empty;
     }
 
     public async Task WriteMessageAsync(string commitMsgFilePath, string newMessage)
