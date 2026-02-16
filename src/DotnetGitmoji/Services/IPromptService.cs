@@ -11,5 +11,6 @@ public interface IPromptService
 
     Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis);
     string? AskScope();
+    string? AskTitle();
     string? AskMessage();
 }

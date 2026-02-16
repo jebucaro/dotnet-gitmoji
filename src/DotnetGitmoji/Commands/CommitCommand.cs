@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Exceptions;
@@ -55,9 +56,23 @@ public sealed class CommitCommand : ICommand
         var config = await _configService.LoadAsync();
         var gitmojis = await _gitmojiProvider.GetAllAsync();
 
+        if (Title is not null && Title.Length > PromptService.MaxTitleLength)
+            throw new CommandException(
+                $"Title exceeds maximum length of {PromptService.MaxTitleLength} characters.");
+
+        if (Scope is not null)
+        {
+            if (!Regex.IsMatch(Scope, @"^[a-zA-Z0-9_\-]+$"))
+                throw new CommandException(
+                    "Scope contains invalid characters. Only alphanumeric, underscore and hyphen are allowed.");
+            if (Scope.Length > PromptService.MaxScopeLength)
+                throw new CommandException(
+                    $"Scope exceeds maximum length of {PromptService.MaxScopeLength} characters.");
+        }
+
         var selected = _promptService.SelectGitmoji(gitmojis);
         var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope() : null);
-        var title = Title ?? (config.MessagePrompt ? _promptService.AskMessage() : null);
+        var title = Title ?? (config.MessagePrompt ? _promptService.AskTitle() : null);
 
         if (string.IsNullOrWhiteSpace(title))
             throw new CommandException("A commit title is required.");

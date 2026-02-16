@@ -99,7 +99,14 @@ public sealed class GitmojiProvider : IGitmojiProvider
                 return null;
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            return await _httpClient.GetFromJsonAsync<GitmojiResponse>(uri, JsonOptions, cts.Token);
+            var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            if (response.Content.Headers.ContentLength > 1_048_576) // 1 MB
+                return null;
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+            return await JsonSerializer.DeserializeAsync<GitmojiResponse>(stream, JsonOptions, cts.Token);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {

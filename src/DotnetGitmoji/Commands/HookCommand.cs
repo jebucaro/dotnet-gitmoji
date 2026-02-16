@@ -1,5 +1,6 @@
 using CliFx;
 using CliFx.Attributes;
+using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
@@ -41,6 +42,9 @@ public sealed class HookCommand : ICommand
     {
         if (CommitSource is "merge" or "squash")
             return;
+
+        if (!File.Exists(CommitMessageFile))
+            throw new CommandException($"Commit message file not found: {CommitMessageFile}");
 
         var message = await _commitMessageService.ReadMessageAsync(CommitMessageFile);
 
