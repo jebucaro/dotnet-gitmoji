@@ -41,6 +41,23 @@ public class GitmojiCommitMessageValidatorTests
     }
 
     [Fact]
+    public void Validate_WhenMessageStartsWithVariationSelectorEmoji_ReturnsMatch()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("⚡️", "entity", ":zap:", "desc", "zap", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate("⚡️ Improve performance", gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Equal(gitmojis[0], result.MatchedGitmoji);
+        Assert.Equal("Improve performance", result.RemainingMessage);
+    }
+
+    [Fact]
     public void Validate_WhenNoMatch_ReturnsInvalid()
     {
         var gitmojis = new[]
