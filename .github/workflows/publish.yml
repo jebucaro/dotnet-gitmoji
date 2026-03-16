@@ -1,0 +1,69 @@
+name: Publish NuGet package
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: Optional package version override (for example 0.2.0 or 0.2.0-preview.1)
+        required: false
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore --nologo
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore --nologo
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --nologo
+
+      - name: Pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_INPUT="${{ inputs.package_version }}"
+          OUTPUT_DIR="${{ github.workspace }}/artifacts"
+          mkdir -p "$OUTPUT_DIR"
+
+          if [[ -n "$VERSION_INPUT" ]]; then
+            dotnet pack src/DotnetGitmoji/DotnetGitmoji.csproj \
+              --configuration Release \
+              --no-build \
+              --nologo \
+              --output "$OUTPUT_DIR" \
+              /p:PackageVersion="$VERSION_INPUT"
+          else
+            dotnet pack src/DotnetGitmoji/DotnetGitmoji.csproj \
+              --configuration Release \
+              --no-build \
+              --nologo \
+              --output "$OUTPUT_DIR"
+          fi
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+
+      - name: Push package to NuGet.org
+        run: dotnet nuget push "${{ github.workspace }}/artifacts/*.nupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+
+      - name: Push symbols to NuGet.org
+        if: ${{ hashFiles('artifacts/*.snupkg') != '' }}
+        run: dotnet nuget push "${{ github.workspace }}/artifacts/*.snupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
