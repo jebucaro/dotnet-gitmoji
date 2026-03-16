@@ -5,6 +5,24 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>dotnet-gitmoji</ToolCommandName>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <PackageId>dotnet-gitmoji</PackageId>
+        <Version>0.1.0</Version>
+        <Title>dotnet-gitmoji</Title>
+        <Authors>dotnet-gitmoji contributors</Authors>
+        <Description>A gitmoji commit convention CLI tool for .NET</Description>
+        <PackageDescription>A gitmoji commit convention CLI tool for .NET projects with interactive and Git hook modes.</PackageDescription>
+        <PackageTags>git;gitmoji;commit;cli;dotnet-tool</PackageTags>
+        <RepositoryUrl>https://github.com/jebucaro/dotnet-gitmoji</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/jebucaro/dotnet-gitmoji</PackageProjectUrl>
+        <RepositoryType>git</RepositoryType>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
     <ItemGroup>

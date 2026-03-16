@@ -69,7 +69,7 @@ public sealed class GitService : IGitService
         Directory.CreateDirectory(hooksDir);
 
         var hookPath = Path.Combine(hooksDir, "prepare-commit-msg");
-        var script = "#!/bin/sh\nexec < /dev/tty\ndotnet dotnet-gitmoji \"$1\" \"$2\"\n";
+        var script = "#!/bin/sh\nexec < /dev/tty\ndotnet-gitmoji \"$1\" \"$2\"\n";
         await File.WriteAllTextAsync(hookPath, script);
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

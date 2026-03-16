@@ -25,7 +25,7 @@ public sealed class InitCommand : ICommand
         {
             await console.Output.WriteLineAsync(
                 "Husky.Net detected. To add the hook, run:\n" +
-                "  dotnet husky add prepare-commit-msg -c \"dotnet dotnet-gitmoji \\\"$1\\\" \\\"$2\\\"\"");
+                "  dotnet husky add prepare-commit-msg -c \"dotnet-gitmoji \\\"$1\\\" \\\"$2\\\"\"");
             return;
         }
 
