@@ -1,12 +1,12 @@
 using CliFx;
-using CliFx.Attributes;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Services;
 
 namespace DotnetGitmoji.Commands;
 
 [Command("update")]
-public sealed class UpdateCommand : ICommand
+public sealed partial class UpdateCommand : ICommand
 {
     private readonly IGitmojiProvider _gitmojiProvider;
 

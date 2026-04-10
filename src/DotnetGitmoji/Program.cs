@@ -37,9 +37,9 @@ public static class Program
 
         using var serviceProvider = services.BuildServiceProvider();
 
-        var app = new CliApplicationBuilder()
+        var app = new CommandLineApplicationBuilder()
             .AddCommandsFromThisAssembly()
-            .UseTypeActivator(type => serviceProvider.GetRequiredService(type))
+            .UseTypeInstantiator(type => serviceProvider.GetRequiredService(type))
             .Build();
 
         return await app.RunAsync(args);

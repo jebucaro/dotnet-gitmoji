@@ -1,13 +1,12 @@
 using CliFx;
-using CliFx.Attributes;
-using CliFx.Exceptions;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Services;
 
 namespace DotnetGitmoji.Commands;
 
 [Command("init")]
-public sealed class InitCommand : ICommand
+public sealed partial class InitCommand : ICommand
 {
     private readonly IGitService _gitService;
 

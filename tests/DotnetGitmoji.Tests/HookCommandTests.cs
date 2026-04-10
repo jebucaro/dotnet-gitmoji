@@ -1,4 +1,4 @@
-using CliFx.Exceptions;
+using CliFx;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Commands;
 using DotnetGitmoji.Models;

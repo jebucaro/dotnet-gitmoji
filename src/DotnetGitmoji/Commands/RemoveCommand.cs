@@ -1,13 +1,12 @@
 using CliFx;
-using CliFx.Attributes;
-using CliFx.Exceptions;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Services;
 
 namespace DotnetGitmoji.Commands;
 
 [Command("remove")]
-public sealed class RemoveCommand : ICommand
+public sealed partial class RemoveCommand : ICommand
 {
     private readonly IGitService _gitService;
 

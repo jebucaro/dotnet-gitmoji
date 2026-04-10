@@ -1,6 +1,5 @@
 using CliFx;
-using CliFx.Attributes;
-using CliFx.Exceptions;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
@@ -9,7 +8,7 @@ using DotnetGitmoji.Validators;
 namespace DotnetGitmoji.Commands;
 
 [Command]
-public sealed class HookCommand : ICommand
+public sealed partial class HookCommand : ICommand
 {
     private readonly ICommitMessageService _commitMessageService;
     private readonly ICommitMessageValidator _validator;
@@ -32,11 +31,11 @@ public sealed class HookCommand : ICommand
     }
 
     [CommandParameter(0, Name = "commit-msg-file", Description = "Path to the commit message file")]
-    public string CommitMessageFile { get; init; } = "";
+    public required string CommitMessageFile { get; set; }
 
-    [CommandParameter(1, Name = "commit-source", IsRequired = false,
+    [CommandParameter(1, Name = "commit-source",
         Description = "Source of the commit (message, template, merge, squash, commit)")]
-    public string? CommitSource { get; init; }
+    public string? CommitSource { get; set; }
 
     public async ValueTask ExecuteAsync(IConsole console)
     {

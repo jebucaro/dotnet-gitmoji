@@ -1,5 +1,5 @@
 using CliFx;
-using CliFx.Attributes;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Services;
 using Spectre.Console;
@@ -7,7 +7,7 @@ using Spectre.Console;
 namespace DotnetGitmoji.Commands;
 
 [Command("list")]
-public sealed class ListCommand : ICommand
+public sealed partial class ListCommand : ICommand
 {
     private readonly IGitmojiProvider _gitmojiProvider;
 

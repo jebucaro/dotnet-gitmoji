@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using CliFx;
-using CliFx.Attributes;
-using CliFx.Exceptions;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using CliWrap;
 using DotnetGitmoji.Models;
@@ -10,7 +9,7 @@ using DotnetGitmoji.Services;
 namespace DotnetGitmoji.Commands;
 
 [Command("commit")]
-public sealed class CommitCommand : ICommand
+public sealed partial class CommitCommand : ICommand
 {
     private readonly IGitmojiProvider _gitmojiProvider;
     private readonly IPromptService _promptService;
@@ -30,13 +29,13 @@ public sealed class CommitCommand : ICommand
     }
 
     [CommandOption("title", 't', Description = "Commit title")]
-    public string? Title { get; init; }
+    public string? Title { get; set; }
 
     [CommandOption("scope", 's', Description = "Commit scope")]
-    public string? Scope { get; init; }
+    public string? Scope { get; set; }
 
     [CommandOption("message", 'm', Description = "Commit message body")]
-    public string? Message { get; init; }
+    public string? Message { get; set; }
 
     public async ValueTask ExecuteAsync(IConsole console)
     {

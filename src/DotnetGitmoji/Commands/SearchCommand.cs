@@ -1,5 +1,5 @@
 using CliFx;
-using CliFx.Attributes;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Services;
 using Spectre.Console;
@@ -7,7 +7,7 @@ using Spectre.Console;
 namespace DotnetGitmoji.Commands;
 
 [Command("search")]
-public sealed class SearchCommand : ICommand
+public sealed partial class SearchCommand : ICommand
 {
     private readonly IGitmojiProvider _gitmojiProvider;
 
@@ -18,7 +18,7 @@ public sealed class SearchCommand : ICommand
 
     [CommandParameter(0, Name = "keyword",
         Description = "Search term to match against emoji name, code, or description")]
-    public string Keyword { get; init; } = "";
+    public string Keyword { get; set; } = "";
 
     public async ValueTask ExecuteAsync(IConsole console)
     {

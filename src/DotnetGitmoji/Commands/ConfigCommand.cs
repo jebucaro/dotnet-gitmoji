@@ -1,5 +1,5 @@
 using CliFx;
-using CliFx.Attributes;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
@@ -8,7 +8,7 @@ using Spectre.Console;
 namespace DotnetGitmoji.Commands;
 
 [Command("config")]
-public sealed class ConfigCommand : ICommand
+public sealed partial class ConfigCommand : ICommand
 {
     private readonly IConfigurationService _configurationService;
 
