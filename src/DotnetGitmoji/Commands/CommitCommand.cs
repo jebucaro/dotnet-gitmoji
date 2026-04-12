@@ -90,7 +90,10 @@ public sealed partial class CommitCommand : ICommand
 
         var body = Message ?? (config.MessagePrompt ? _promptService.AskMessage() : null);
 
-        var args = new List<string> { "commit", "-m", commitMessage };
+        var args = new List<string> { "commit" };
+        if (config.SignedCommit)
+            args.Add("-S");
+        args.AddRange(["-m", commitMessage]);
         if (!string.IsNullOrWhiteSpace(body))
         {
             args.Add("-m");

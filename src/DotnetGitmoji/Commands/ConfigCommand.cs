@@ -34,12 +34,14 @@ public sealed partial class ConfigCommand : ICommand
         var messagePrompt = AnsiConsole.Confirm("Prompt for commit message?", config.MessagePrompt);
         var capitalizeTitle = AnsiConsole.Confirm("Capitalize commit title?", config.CapitalizeTitle);
         var autoAdd = AnsiConsole.Confirm("Auto-add changes before commit? (client mode only)", config.AutoAdd);
+        var signedCommit = AnsiConsole.Confirm("Sign commits with GPG? (client mode only)", config.SignedCommit);
 
         config.EmojiFormat = emojiFormat;
         config.ScopePrompt = scopePrompt;
         config.MessagePrompt = messagePrompt;
         config.CapitalizeTitle = capitalizeTitle;
         config.AutoAdd = autoAdd;
+        config.SignedCommit = signedCommit;
 
         await _configurationService.SaveAsync(config);
         await console.Output.WriteLineAsync("Configuration saved.");

@@ -8,5 +8,6 @@ public sealed class ToolConfiguration
     public bool CapitalizeTitle { get; set; } = true;
     public string GitmojisUrl { get; set; } = "https://gitmoji.dev/api/gitmojis";
     public bool AutoAdd { get; set; } = false;
+    public bool SignedCommit { get; set; } = false;
     public string[]? Scopes { get; set; }
 }
