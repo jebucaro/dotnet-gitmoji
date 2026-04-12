@@ -39,7 +39,7 @@ public sealed partial class HookCommand : ICommand
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        if (CommitSource is "merge" or "squash")
+        if (CommitSource is "merge" or "squash" or "commit")
             return;
 
         if (!File.Exists(CommitMessageFile))
@@ -74,9 +74,17 @@ public sealed partial class HookCommand : ICommand
             : null;
 
         var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
-        var title = config.CapitalizeTitle && !string.IsNullOrEmpty(message)
-            ? char.ToUpper(message[0]) + message[1..]
-            : message;
+        var rawTitle = _promptService.AskTitle(message);
+        if (string.IsNullOrWhiteSpace(rawTitle))
+        {
+            await console.Error.WriteLineAsync(
+                "⚠ dotnet-gitmoji: empty title, keeping original commit message.");
+            return;
+        }
+
+        var title = config.CapitalizeTitle
+            ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
+            : rawTitle;
         var newMessage = $"{prefix} {scopePart}{title}";
 
         if (config.MessagePrompt && _promptService.IsInteractive)

@@ -12,19 +12,26 @@ public sealed partial class PromptService : IPromptService
     [GeneratedRegex(@"^[a-zA-Z0-9_\-]+$")]
     private static partial Regex ScopePattern();
 
-    public bool IsInteractive => !Console.IsInputRedirected && Environment.UserInteractive;
+    private readonly IAnsiConsole _console = AnsiConsole.Create(new AnsiConsoleSettings
+    {
+        Interactive = InteractionSupport.Yes,
+        Ansi = AnsiSupport.Yes
+    });
+
+    public bool IsInteractive =>
+        !Console.IsOutputRedirected &&
+        Environment.UserInteractive &&
+        !Console.IsInputRedirected;
 
     public Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis)
     {
-        var selected = AnsiConsole.Prompt(
+        return _console.Prompt(
             new SelectionPrompt<Gitmoji>()
                 .Title("Choose a gitmoji:")
                 .PageSize(15)
                 .MoreChoicesText("[grey]Scroll for more...[/]")
                 .UseConverter(g => $"{g.Emoji} - {Markup.Escape(g.Description)}")
                 .AddChoices(gitmojis));
-
-        return selected;
     }
 
     public string? AskScope(IReadOnlyList<string>? predefinedScopes = null)
@@ -34,7 +41,7 @@ public sealed partial class PromptService : IPromptService
             var choices = new List<string> { "(none)" };
             choices.AddRange(predefinedScopes);
 
-            var selected = AnsiConsole.Prompt(
+            var selected = _console.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[grey]Select scope:[/]")
                     .AddChoices(choices));
@@ -42,7 +49,7 @@ public sealed partial class PromptService : IPromptService
             return selected == "(none)" ? null : selected;
         }
 
-        var scope = AnsiConsole.Prompt(
+        var scope = _console.Prompt(
             new TextPrompt<string>("[grey]Enter scope (optional, press Enter to skip):[/]")
                 .AllowEmpty());
 
@@ -53,7 +60,7 @@ public sealed partial class PromptService : IPromptService
 
         if (!ScopePattern().IsMatch(scope))
         {
-            AnsiConsole.MarkupLine(
+            _console.MarkupLine(
                 "[yellow]Warning: scope contains invalid characters (only alphanumeric, _ and - allowed). Scope ignored.[/]");
             return null;
         }
@@ -61,15 +68,20 @@ public sealed partial class PromptService : IPromptService
         if (scope.Length > MaxScopeLength)
         {
             scope = scope[..MaxScopeLength];
-            AnsiConsole.MarkupLine($"[yellow]Warning: scope truncated to {MaxScopeLength} characters.[/]");
+            _console.MarkupLine($"[yellow]Warning: scope truncated to {MaxScopeLength} characters.[/]");
         }
 
         return scope;
     }
 
-    public string? AskTitle()
+    public string? AskTitle(string? defaultValue = null)
     {
-        var title = AnsiConsole.Ask<string?>("[grey]Enter commit title:[/]");
+        var prompt = new TextPrompt<string>("[grey]Enter commit title:[/]")
+            .AllowEmpty();
+        if (!string.IsNullOrEmpty(defaultValue))
+            prompt.DefaultValue(defaultValue);
+
+        var title = _console.Prompt(prompt);
 
         if (string.IsNullOrWhiteSpace(title))
             return null;
@@ -78,7 +90,7 @@ public sealed partial class PromptService : IPromptService
         {
             var lastSpace = title.LastIndexOf(' ', MaxTitleLength - 1);
             title = lastSpace > 0 ? title[..lastSpace] : title[..MaxTitleLength];
-            AnsiConsole.MarkupLine(
+            _console.MarkupLine(
                 $"[yellow]Warning: title truncated to {title.Length} characters (nearest word boundary).[/]");
         }
 
@@ -87,7 +99,7 @@ public sealed partial class PromptService : IPromptService
 
     public string? AskMessage()
     {
-        var message = AnsiConsole.Ask<string?>("[grey]Enter commit message:[/]");
+        var message = _console.Ask<string?>("[grey]Enter commit message:[/]");
         return string.IsNullOrWhiteSpace(message) ? null : message;
     }
 }

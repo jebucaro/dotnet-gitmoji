@@ -39,7 +39,8 @@ public class HookCommandTests
     [Theory]
     [InlineData("merge")]
     [InlineData("squash")]
-    public async Task ExecuteAsync_WhenMergeOrSquashSource_SkipsValidation(string source)
+    [InlineData("commit")]
+    public async Task ExecuteAsync_WhenSkippableSource_SkipsValidation(string source)
     {
         var command = CreateCommand("any_file.txt", source);
         var console = new FakeInMemoryConsole();
