@@ -42,6 +42,13 @@ public sealed partial class HookCommand : ICommand
         if (CommitSource is "merge" or "squash" or "commit")
             return;
 
+        // Skip during an interactive rebase. Git doesn't pass a source argument in
+        // this case, but the rebase state directories are present inside .git/.
+        var gitDir = Path.GetDirectoryName(Path.GetFullPath(CommitMessageFile))!;
+        if (Directory.Exists(Path.Combine(gitDir, "rebase-merge")) ||
+            Directory.Exists(Path.Combine(gitDir, "rebase-apply")))
+            return;
+
         if (!File.Exists(CommitMessageFile))
             throw new CommandException($"Commit message file not found: {CommitMessageFile}");
 
