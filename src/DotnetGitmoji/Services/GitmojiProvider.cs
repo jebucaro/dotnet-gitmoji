@@ -8,6 +8,7 @@ namespace DotnetGitmoji.Services;
 public sealed class GitmojiProvider : IGitmojiProvider
 {
     private const string EmbeddedResourceName = "DotnetGitmoji.Resources.gitmojis.default.json";
+    private const int MinValidGitmojiCount = 50;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly HttpClient _httpClient;
@@ -28,7 +29,7 @@ public sealed class GitmojiProvider : IGitmojiProvider
         try
         {
             var cached = await LoadFromCacheAsync();
-            if (cached.Gitmojis?.Length > 0) return cached.Gitmojis;
+            if (cached.Gitmojis?.Length >= MinValidGitmojiCount) return cached.Gitmojis;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
