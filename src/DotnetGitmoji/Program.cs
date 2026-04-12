@@ -11,6 +11,10 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        // Reopen stdin from terminal device before anything caches IsInputRedirected.
+        // Harmless no-op when stdin is already a TTY (client mode).
+        TtyConsoleInput.TryReopenStdin();
+
         var services = new ServiceCollection();
 
         // Services
