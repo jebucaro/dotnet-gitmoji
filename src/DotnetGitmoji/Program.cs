@@ -20,6 +20,7 @@ public static class Program
         // Services
         services.AddHttpClient();
         services.AddSingleton<ToolConfiguration>();
+        services.AddSingleton<IGitmojiFuzzyMatcher, GitmojiFuzzyMatcher>();
         services.AddSingleton<IGitmojiProvider, GitmojiProvider>();
         services.AddSingleton<ICommitMessageService, CommitMessageService>();
         services.AddSingleton<IGitService, GitService>();

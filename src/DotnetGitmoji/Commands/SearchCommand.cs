@@ -17,7 +17,7 @@ public sealed partial class SearchCommand : ICommand
     }
 
     [CommandParameter(0, Name = "keyword",
-        Description = "Search term to match against emoji name, code, or description")]
+        Description = "Search term for fuzzy matching against gitmoji name, code, or description")]
     public string Keyword { get; set; } = "";
 
     public async ValueTask ExecuteAsync(IConsole console)

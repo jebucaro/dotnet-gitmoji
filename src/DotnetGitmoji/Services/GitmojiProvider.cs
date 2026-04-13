@@ -13,13 +13,18 @@ public sealed class GitmojiProvider : IGitmojiProvider
 
     private readonly HttpClient _httpClient;
     private readonly ToolConfiguration _config;
+    private readonly IGitmojiFuzzyMatcher _fuzzyMatcher;
     private readonly string _cacheDirectory;
     private readonly string _cachePath;
 
-    public GitmojiProvider(IHttpClientFactory httpClientFactory, ToolConfiguration config)
+    public GitmojiProvider(
+        IHttpClientFactory httpClientFactory,
+        ToolConfiguration config,
+        IGitmojiFuzzyMatcher fuzzyMatcher)
     {
         _httpClient = httpClientFactory.CreateClient();
         _config = config ?? throw new ArgumentNullException(nameof(config));
+        _fuzzyMatcher = fuzzyMatcher ?? throw new ArgumentNullException(nameof(fuzzyMatcher));
         _cacheDirectory = DotnetGitmojiPaths.UserDataDirectory;
         _cachePath = DotnetGitmojiPaths.GitmojiCachePath;
     }
@@ -60,22 +65,8 @@ public sealed class GitmojiProvider : IGitmojiProvider
 
     public async Task<IReadOnlyList<Gitmoji>> SearchAsync(string keyword)
     {
-        if (string.IsNullOrWhiteSpace(keyword)) return await GetAllAsync();
-
         var all = await GetAllAsync();
-        var term = keyword.Trim();
-
-        return all
-            .Where(g =>
-                g.Description.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                g.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                g.Code.Contains(term, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(g =>
-                g.Name.Equals(term, StringComparison.OrdinalIgnoreCase) ? 3 // exact name match
-                : g.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ? 2 // partial name match
-                : g.Code.Contains(term, StringComparison.OrdinalIgnoreCase) ? 1 // code match
-                : 0)
-            .ToArray();
+        return _fuzzyMatcher.RankGitmojis(all, keyword);
     }
 
     private async Task<GitmojiResponse> LoadFromCacheAsync()

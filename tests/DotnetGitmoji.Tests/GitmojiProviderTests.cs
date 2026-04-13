@@ -16,14 +16,16 @@ public class GitmojiProviderTests
 
     private static string ValidJson => JsonSerializer.Serialize(ValidResponse);
 
-    private static GitmojiProvider CreateProvider(HttpMessageHandler handler,
-        string url = "https://gitmoji.dev/api/gitmojis")
+    private static GitmojiProvider CreateProvider(
+        HttpMessageHandler handler,
+        string url = "https://gitmoji.dev/api/gitmojis",
+        IGitmojiFuzzyMatcher? fuzzyMatcher = null)
     {
         var factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(handler));
 
         var config = new ToolConfiguration { GitmojisUrl = url };
-        return new GitmojiProvider(factory, config);
+        return new GitmojiProvider(factory, config, fuzzyMatcher ?? new GitmojiFuzzyMatcher());
     }
 
     [Fact]
@@ -83,6 +85,28 @@ public class GitmojiProviderTests
         Assert.True(result.Count > 0);
         // Handler should not have been called for non-HTTPS URL
         Assert.False(handler.WasCalled);
+    }
+
+    [Fact]
+    public async Task SearchAsync_DelegatesRankingToFuzzyMatcher()
+    {
+        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(ValidJson)
+        });
+
+        var fuzzyMatcher = Substitute.For<IGitmojiFuzzyMatcher>();
+        var expected = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "Fix a bug", "bug", null)
+        };
+        fuzzyMatcher.RankGitmojis(Arg.Any<IReadOnlyList<Gitmoji>>(), "bug").Returns(expected);
+
+        var provider = CreateProvider(handler, fuzzyMatcher: fuzzyMatcher);
+        var result = await provider.SearchAsync("bug");
+
+        Assert.Equal(expected, result);
+        fuzzyMatcher.Received(1).RankGitmojis(Arg.Any<IReadOnlyList<Gitmoji>>(), "bug");
     }
 
     private sealed class FakeHandler : HttpMessageHandler
