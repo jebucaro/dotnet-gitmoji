@@ -36,12 +36,33 @@ public sealed partial class ConfigCommand : ICommand
         var autoAdd = AnsiConsole.Confirm("Auto-add changes before commit? (client mode only)", config.AutoAdd);
         var signedCommit = AnsiConsole.Confirm("Sign commits with GPG? (client mode only)", config.SignedCommit);
 
+        var gitmojisUrl = AnsiConsole.Prompt(
+            new TextPrompt<string>("Gitmojis API URL:")
+                .DefaultValue(config.GitmojisUrl)
+                .Validate(url =>
+                    Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
+                        ? ValidationResult.Success()
+                        : ValidationResult.Error("[red]Must be a valid HTTPS URL[/]")));
+
+        var scopesDefault = config.Scopes is { Length: > 0 }
+            ? string.Join(", ", config.Scopes)
+            : string.Empty;
+        var scopesInput = AnsiConsole.Prompt(
+            new TextPrompt<string>("Predefined scopes (comma-separated, leave empty to clear):")
+                .AllowEmpty()
+                .DefaultValue(scopesDefault));
+        var scopes = string.IsNullOrWhiteSpace(scopesInput)
+            ? null
+            : scopesInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
         config.EmojiFormat = emojiFormat;
         config.ScopePrompt = scopePrompt;
         config.MessagePrompt = messagePrompt;
         config.CapitalizeTitle = capitalizeTitle;
         config.AutoAdd = autoAdd;
         config.SignedCommit = signedCommit;
+        config.GitmojisUrl = gitmojisUrl;
+        config.Scopes = scopes;
 
         await _configurationService.SaveAsync(config);
         await console.Output.WriteLineAsync("Configuration saved.");

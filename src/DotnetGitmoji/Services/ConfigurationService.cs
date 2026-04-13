@@ -68,8 +68,16 @@ public sealed class ConfigurationService : IConfigurationService
         try
         {
             await using var stream = File.OpenRead(path);
-            var config = await JsonSerializer.DeserializeAsync<ToolConfiguration>(stream, ReadOptions);
-            return config ?? new ToolConfiguration();
+            var config = await JsonSerializer.DeserializeAsync<ToolConfiguration>(stream, ReadOptions)
+                         ?? new ToolConfiguration();
+
+            if (Uri.TryCreate(config.GitmojisUrl, UriKind.Absolute, out var uri)
+                && uri.Scheme == Uri.UriSchemeHttps) return config;
+            Console.Error.WriteLine(
+                $"Warning: Invalid GitmojisUrl in config at {path}, using default.");
+            config.GitmojisUrl = new ToolConfiguration().GitmojisUrl;
+
+            return config;
         }
         catch (JsonException)
         {
