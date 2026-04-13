@@ -50,7 +50,7 @@ public sealed class GitService : IGitService
             if (!File.Exists(hookPath)) continue;
 
             var content = await File.ReadAllTextAsync(hookPath);
-            if (content.Contains("dotnet-gitmoji", StringComparison.OrdinalIgnoreCase)) return true;
+            if (ContainsActiveDotnetGitmojiInvocation(content)) return true;
         }
 
         return false;
@@ -59,17 +59,18 @@ public sealed class GitService : IGitService
     public async Task<HuskyInstallKind> DetectHuskyKindAsync()
     {
         var repoRoot = await GetRepositoryRootAsync();
+        var huskyDir = Path.Combine(repoRoot, ".husky");
 
-        if (File.Exists(Path.Combine(repoRoot, ".husky", "_", "husky.sh")))
-            return HuskyInstallKind.JsHusky;
+        if (!Directory.Exists(huskyDir))
+            return HuskyInstallKind.None;
 
-        if (File.Exists(Path.Combine(repoRoot, ".husky", "task-runner.json")))
+        if (File.Exists(Path.Combine(huskyDir, "task-runner.json")))
             return HuskyInstallKind.HuskyNetTaskRunner;
 
-        if (Directory.Exists(Path.Combine(repoRoot, ".husky")))
-            return HuskyInstallKind.HuskyNetShell;
+        if (File.Exists(Path.Combine(huskyDir, "_", "husky.sh")))
+            return HuskyInstallKind.JsHusky;
 
-        return HuskyInstallKind.None;
+        return HuskyInstallKind.HuskyNetShell;
     }
 
     public async Task<bool> IsHuskyInstalledAsync()
@@ -107,7 +108,7 @@ public sealed class GitService : IGitService
             if (!File.Exists(hookPath)) continue;
 
             var content = await File.ReadAllTextAsync(hookPath);
-            if (content.Contains("dotnet-gitmoji", StringComparison.OrdinalIgnoreCase))
+            if (ContainsActiveDotnetGitmojiInvocation(content))
                 return hookPath;
         }
 
@@ -137,5 +138,21 @@ public sealed class GitService : IGitService
         await Cli.Wrap("git")
             .WithArguments(["add", "."])
             .ExecuteAsync();
+    }
+
+    private static bool ContainsActiveDotnetGitmojiInvocation(string hookContent)
+    {
+        foreach (var rawLine in hookContent.Split('\n'))
+        {
+            var line = rawLine.Trim();
+
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+                continue;
+
+            if (line.Contains("dotnet-gitmoji", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 }

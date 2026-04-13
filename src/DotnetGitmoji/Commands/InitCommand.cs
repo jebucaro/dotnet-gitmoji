@@ -32,30 +32,23 @@ public sealed partial class InitCommand : ICommand
                 return;
 
             case HuskyInstallKind.HuskyNetTaskRunner:
-                await console.Output.WriteLineAsync(
-                    "Husky.Net (task-runner) detected. Add the following entry to your task-runner.json:\n\n" +
-                    "  {\n" +
-                    "    \"name\": \"dotnet-gitmoji\",\n" +
-                    "    \"command\": \"dotnet-gitmoji\",\n" +
-                    "    \"args\": [\"${args[0]}\", \"${args[1]}\"],\n" +
-                    "    \"pathMode\": \"task\"\n" +
-                    "  }\n\n" +
-                    "Then register the hook:\n" +
-                    "  dotnet husky add prepare-commit-msg -c \"dotnet husky run --name dotnet-gitmoji -- \\\"$1\\\" \\\"$2\\\"\"");
-                return;
-
             case HuskyInstallKind.HuskyNetShell:
-                await console.Output.WriteLineAsync(
-                    "Husky.Net detected. Choose a setup option:\n\n" +
-                    "Option 1 — Shell-command hook (simpler):\n" +
-                    "  dotnet husky add prepare-commit-msg -c \"dotnet-gitmoji \\\"$1\\\" \\\"$2\\\"\"\n\n" +
-                    "Option 2 — Task-runner hook (if using task-runner.json):\n" +
-                    "  Add a task entry in task-runner.json, then run:\n" +
-                    "  dotnet husky add prepare-commit-msg -c \"dotnet husky run --name dotnet-gitmoji -- \\\"$1\\\" \\\"$2\\\"\"");
+                await console.Output.WriteLineAsync(GetHuskyNetSetupMessage());
                 return;
         }
 
         await _gitService.InstallHookDirectAsync();
         await console.Output.WriteLineAsync("prepare-commit-msg hook installed successfully.");
+    }
+
+    private static string GetHuskyNetSetupMessage()
+    {
+        return
+            "Husky.Net detected. Choose a setup option:\n\n" +
+            "Option 1 — Shell-command hook (simpler):\n" +
+            "  dotnet husky add prepare-commit-msg -c \"dotnet-gitmoji \\\"$1\\\" \\\"$2\\\"\"\n\n" +
+            "Option 2 — Task-runner hook (if using task-runner.json):\n" +
+            "  Add a task entry in task-runner.json, then run:\n" +
+            "  dotnet husky add prepare-commit-msg -c \"dotnet husky run --name dotnet-gitmoji -- \\\"$1\\\" \\\"$2\\\"\"";
     }
 }
