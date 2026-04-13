@@ -63,7 +63,7 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
     }
 
     [Fact]
-    public async Task Init_WhenHuskyNetDetected_PrintsHuskyAddCommandWithoutDirectInstall()
+    public async Task Init_WhenJsHuskyDetected_PrintsJsHuskyGuidanceWithoutDirectInstall()
     {
         await WithTemporaryRepositoryAsync(async repositoryRoot =>
         {
@@ -74,10 +74,45 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
             var result = await _fixture.RunToolAsync(repositoryRoot, "init");
 
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("Husky.Net detected", result.StandardOutput, StringComparison.Ordinal);
+            Assert.Contains("JavaScript Husky detected", result.StandardOutput, StringComparison.Ordinal);
             Assert.Contains(
                 "dotnet husky add prepare-commit-msg -c \"dotnet-gitmoji \\\"$1\\\" \\\"$2\\\"\"",
                 result.StandardOutput, StringComparison.Ordinal);
+            Assert.False(File.Exists(Path.Combine(repositoryRoot, ".git", "hooks", "prepare-commit-msg")));
+        });
+    }
+
+    [Fact]
+    public async Task Init_WhenHuskyNetTaskRunnerDetected_PrintsTaskRunnerSnippet()
+    {
+        await WithTemporaryRepositoryAsync(async repositoryRoot =>
+        {
+            var taskRunnerFile = Path.Combine(repositoryRoot, ".husky", "task-runner.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(taskRunnerFile)!);
+            await File.WriteAllTextAsync(taskRunnerFile, "{}");
+
+            var result = await _fixture.RunToolAsync(repositoryRoot, "init");
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Husky.Net (task-runner) detected", result.StandardOutput, StringComparison.Ordinal);
+            Assert.Contains("task-runner.json", result.StandardOutput, StringComparison.Ordinal);
+            Assert.False(File.Exists(Path.Combine(repositoryRoot, ".git", "hooks", "prepare-commit-msg")));
+        });
+    }
+
+    [Fact]
+    public async Task Init_WhenHuskyNetShellDetected_PrintsBothSetupOptions()
+    {
+        await WithTemporaryRepositoryAsync(async repositoryRoot =>
+        {
+            Directory.CreateDirectory(Path.Combine(repositoryRoot, ".husky"));
+
+            var result = await _fixture.RunToolAsync(repositoryRoot, "init");
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Contains("Husky.Net detected", result.StandardOutput, StringComparison.Ordinal);
+            Assert.Contains("Option 1", result.StandardOutput, StringComparison.Ordinal);
+            Assert.Contains("Option 2", result.StandardOutput, StringComparison.Ordinal);
             Assert.False(File.Exists(Path.Combine(repositoryRoot, ".git", "hooks", "prepare-commit-msg")));
         });
     }
