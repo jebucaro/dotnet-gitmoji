@@ -77,10 +77,14 @@ public sealed partial class CommitCommand : ICommand
 
         var selected = _promptService.SelectGitmoji(gitmojis);
         var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
-        var title = Title ?? (config.MessagePrompt ? _promptService.AskTitle() : null);
+        var rawTitle = Title ?? _promptService.AskTitle();
 
-        if (string.IsNullOrWhiteSpace(title))
+        if (string.IsNullOrWhiteSpace(rawTitle))
             throw new CommandException("A commit title is required.");
+
+        var title = config.CapitalizeTitle
+            ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
+            : rawTitle;
 
         var prefix = config.EmojiFormat == EmojiFormat.Unicode
             ? selected.Emoji

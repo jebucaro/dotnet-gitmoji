@@ -94,7 +94,7 @@ public sealed partial class HookCommand : ICommand
             : rawTitle;
         var newMessage = $"{prefix} {scopePart}{title}";
 
-        if (config.MessagePrompt && _promptService.IsInteractive)
+        if (config.MessagePrompt)
         {
             var body = _promptService.AskMessage();
             if (!string.IsNullOrWhiteSpace(body))
