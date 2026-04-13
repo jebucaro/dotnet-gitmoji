@@ -33,7 +33,9 @@ public sealed partial class RemoveCommand : ICommand
                     await console.Output.WriteLineAsync(
                         $"Hook found in Husky.Net managed file: {hookFile}\n" +
                         "To remove, run:\n" +
-                        "  dotnet husky remove prepare-commit-msg");
+                        "  dotnet husky remove prepare-commit-msg\n\n" +
+                        "If init was configured with '--mode task-runner', also remove the\n" +
+                        "'dotnet-gitmoji' task from .husky/task-runner.json.");
                     break;
 
                 case HuskyInstallKind.JsHusky:

@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using CliWrap;
 using CliWrap.Buffered;
 using DotnetGitmoji.Models;
@@ -7,6 +9,11 @@ namespace DotnetGitmoji.Services;
 
 public sealed class GitService : IGitService
 {
+    private const string PrepareCommitMessageHookName = "prepare-commit-msg";
+    private const string DotnetGitmojiTaskName = "dotnet-gitmoji";
+    private const string ShellHookCommand = "dotnet-gitmoji \"$1\" \"$2\"";
+    private const string TaskRunnerHookCommand = "dotnet husky run --name dotnet-gitmoji -- \"$1\" \"$2\"";
+
     public async Task<string> GetRepositoryRootAsync()
     {
         var result = await Cli.Wrap("git")
@@ -78,14 +85,29 @@ public sealed class GitService : IGitService
         return await DetectHuskyKindAsync() != HuskyInstallKind.None;
     }
 
+    public async Task InstallHuskyNetShellHookAsync()
+    {
+        var repoRoot = await GetRepositoryRootAsync();
+        await RunDotnetHuskyAddAsync(repoRoot, ShellHookCommand);
+    }
+
+    public async Task InstallHuskyNetTaskRunnerHookAsync()
+    {
+        var repoRoot = await GetRepositoryRootAsync();
+        var taskRunnerPath = Path.Combine(repoRoot, ".husky", "task-runner.json");
+
+        await EnsureTaskRunnerContainsDotnetGitmojiTaskAsync(taskRunnerPath);
+        await RunDotnetHuskyAddAsync(repoRoot, TaskRunnerHookCommand);
+    }
+
     public async Task InstallHookDirectAsync()
     {
         var repoRoot = await GetRepositoryRootAsync();
         var hooksDir = Path.Combine(repoRoot, ".git", "hooks");
         Directory.CreateDirectory(hooksDir);
 
-        var hookPath = Path.Combine(hooksDir, "prepare-commit-msg");
-        var script = "#!/bin/sh\nexec < /dev/tty\ndotnet-gitmoji \"$1\" \"$2\"\n";
+        var hookPath = Path.Combine(hooksDir, PrepareCommitMessageHookName);
+        var script = $"#!/bin/sh\nexec < /dev/tty\n{ShellHookCommand}\n";
         await File.WriteAllTextAsync(hookPath, script);
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -118,7 +140,7 @@ public sealed class GitService : IGitService
     public async Task RemoveHookDirectAsync()
     {
         var repoRoot = await GetRepositoryRootAsync();
-        var hookPath = Path.Combine(repoRoot, ".git", "hooks", "prepare-commit-msg");
+        var hookPath = Path.Combine(repoRoot, ".git", "hooks", PrepareCommitMessageHookName);
 
         if (!File.Exists(hookPath)) return;
 
@@ -138,6 +160,100 @@ public sealed class GitService : IGitService
         await Cli.Wrap("git")
             .WithArguments(["add", "."])
             .ExecuteAsync();
+    }
+
+    private static async Task RunDotnetHuskyAddAsync(string repoRoot, string hookCommand)
+    {
+        var result = await Cli.Wrap("dotnet")
+            .WithWorkingDirectory(repoRoot)
+            .WithArguments(["husky", "add", PrepareCommitMessageHookName, "-c", hookCommand])
+            .WithValidation(CommandResultValidation.None)
+            .ExecuteBufferedAsync();
+
+        if (result.ExitCode == 0)
+            return;
+
+        var error = string.IsNullOrWhiteSpace(result.StandardError)
+            ? result.StandardOutput.Trim()
+            : result.StandardError.Trim();
+
+        var message = string.IsNullOrWhiteSpace(error)
+            ? $"Failed to run 'dotnet husky add {PrepareCommitMessageHookName}' (exit code {result.ExitCode}). Ensure Husky.Net is installed and available."
+            : $"Failed to run 'dotnet husky add {PrepareCommitMessageHookName}'. Ensure Husky.Net is installed and available. Details: {error}";
+
+        throw new InvalidOperationException(message);
+    }
+
+    private static async Task EnsureTaskRunnerContainsDotnetGitmojiTaskAsync(string taskRunnerPath)
+    {
+        JsonObject rootObject;
+
+        if (File.Exists(taskRunnerPath))
+        {
+            var existingJson = await File.ReadAllTextAsync(taskRunnerPath);
+            var parsedNode = JsonNode.Parse(existingJson);
+            rootObject = parsedNode as JsonObject
+                         ?? throw new InvalidOperationException(
+                             $"Invalid task-runner file at {taskRunnerPath}: root value must be a JSON object.");
+        }
+        else
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(taskRunnerPath)!);
+            rootObject = new JsonObject
+            {
+                ["$schema"] = "https://alirezanet.github.io/Husky.Net/schema.json"
+            };
+        }
+
+        JsonArray tasks;
+        if (rootObject["tasks"] is null)
+        {
+            tasks = new JsonArray();
+            rootObject["tasks"] = tasks;
+        }
+        else if (rootObject["tasks"] is JsonArray existingTasks)
+        {
+            tasks = existingTasks;
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"Invalid task-runner file at {taskRunnerPath}: 'tasks' must be a JSON array.");
+        }
+
+        if (!ContainsTaskNamed(tasks, DotnetGitmojiTaskName))
+        {
+            tasks.Add(new JsonObject
+            {
+                ["name"] = DotnetGitmojiTaskName,
+                ["command"] = "dotnet-gitmoji",
+                ["args"] = new JsonArray("${args}")
+            });
+        }
+
+        var json = rootObject.ToJsonString(new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+        await File.WriteAllTextAsync(taskRunnerPath, json + Environment.NewLine);
+    }
+
+    private static bool ContainsTaskNamed(JsonArray tasks, string taskName)
+    {
+        foreach (var taskNode in tasks)
+        {
+            if (taskNode is not JsonObject taskObject)
+                continue;
+
+            if (taskObject["name"] is JsonValue taskNameValue &&
+                taskNameValue.TryGetValue<string>(out var existingName) &&
+                string.Equals(existingName, taskName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool ContainsActiveDotnetGitmojiInvocation(string hookContent)

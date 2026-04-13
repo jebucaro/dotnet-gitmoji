@@ -12,6 +12,8 @@ public interface IGitService
     /// <summary>Returns true when any Husky variant is detected.</summary>
     Task<bool> IsHuskyInstalledAsync();
 
+    Task InstallHuskyNetShellHookAsync();
+    Task InstallHuskyNetTaskRunnerHookAsync();
     Task InstallHookDirectAsync();
     Task<string?> FindHookFileAsync();
     Task RemoveHookDirectAsync();

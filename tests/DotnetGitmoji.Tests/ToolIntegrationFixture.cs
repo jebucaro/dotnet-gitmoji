@@ -70,6 +70,14 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
         return RunProcessAsync(GetToolExecutablePath(), arguments, workingDirectory);
     }
 
+    public Task<ProcessResult> RunToolAsync(
+        string workingDirectory,
+        IReadOnlyDictionary<string, string?> environment,
+        params string[] arguments)
+    {
+        return RunProcessAsync(GetToolExecutablePath(), arguments, workingDirectory, environment);
+    }
+
     public static async Task<ProcessResult> RunProcessAsync(
         string fileName,
         IReadOnlyList<string> arguments,
