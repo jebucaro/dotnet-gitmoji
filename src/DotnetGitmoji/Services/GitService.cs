@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using CliWrap;
 using CliWrap.Buffered;
+using DotnetGitmoji.Models;
 
 namespace DotnetGitmoji.Services;
 
@@ -55,11 +56,25 @@ public sealed class GitService : IGitService
         return false;
     }
 
-    public async Task<bool> IsHuskyInstalledAsync()
+    public async Task<HuskyInstallKind> DetectHuskyKindAsync()
     {
         var repoRoot = await GetRepositoryRootAsync();
-        return File.Exists(Path.Combine(repoRoot, ".husky", "_", "husky.sh"))
-               || File.Exists(Path.Combine(repoRoot, ".husky", "task-runner.json"));
+
+        if (File.Exists(Path.Combine(repoRoot, ".husky", "_", "husky.sh")))
+            return HuskyInstallKind.JsHusky;
+
+        if (File.Exists(Path.Combine(repoRoot, ".husky", "task-runner.json")))
+            return HuskyInstallKind.HuskyNetTaskRunner;
+
+        if (Directory.Exists(Path.Combine(repoRoot, ".husky")))
+            return HuskyInstallKind.HuskyNetShell;
+
+        return HuskyInstallKind.None;
+    }
+
+    public async Task<bool> IsHuskyInstalledAsync()
+    {
+        return await DetectHuskyKindAsync() != HuskyInstallKind.None;
     }
 
     public async Task InstallHookDirectAsync()
