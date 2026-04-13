@@ -49,4 +49,63 @@ public class HookCommandTests
 
         await _commitMessageService.DidNotReceive().ReadMessageAsync(Arg.Any<string>());
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenMessagePromptIsTrue_PromptsForBody()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = true });
+            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message without gitmoji");
+            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.AskTitle(Arg.Any<string?>()).Returns("Fix bug");
+            _promptService.AskMessage().Returns((string?)null);
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            _promptService.Received().AskMessage();
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenMessagePromptIsFalse_DoesNotPromptForBody()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
+            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message without gitmoji");
+            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.AskTitle(Arg.Any<string?>()).Returns("Fix bug");
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            _promptService.DidNotReceive().AskMessage();
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
 }

@@ -68,4 +68,44 @@ public class CommitCommandValidationTests
 
         Assert.Contains("maximum length", ex.Message);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenMessagePromptIsFalseAndNoTitleArg_StillPromptsForTitle()
+    {
+        // Title prompt must be independent of MessagePrompt — title is always required.
+        _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+        _promptService.AskTitle(Arg.Any<string?>()).Returns((string?)null);
+
+        var command = CreateCommand(); // No title arg
+        var console = new FakeInMemoryConsole();
+
+        await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        _promptService.Received().AskTitle(Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenTitleArgIsProvided_DoesNotPromptForTitle()
+    {
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+        _promptService.AskTitle(Arg.Any<string?>()).Returns((string?)null);
+
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        // The command will attempt to run git and fail; we only care about prompt interactions.
+        try
+        {
+            await command.ExecuteAsync(console);
+        }
+        catch
+        {
+            /* git execution will fail */
+        }
+
+        _promptService.DidNotReceive().AskTitle(Arg.Any<string?>());
+    }
 }
