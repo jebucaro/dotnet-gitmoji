@@ -11,7 +11,7 @@ public sealed class GitmojiCommitMessageValidator : ICommitMessageValidator
             if (message.StartsWith(g.Emoji, StringComparison.Ordinal))
                 return new ValidationResult(true, g, message[g.Emoji.Length..].TrimStart());
 
-        var shortcodeMatch = Regex.Match(message, @"^(:[a-z_]+:)\s*");
+        var shortcodeMatch = Regex.Match(message, @"^(:[a-z0-9_]+:)\s*");
         if (shortcodeMatch.Success)
         {
             var code = shortcodeMatch.Groups[1].Value;

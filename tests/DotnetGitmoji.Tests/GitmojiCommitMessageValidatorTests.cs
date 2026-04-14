@@ -58,6 +58,23 @@ public class GitmojiCommitMessageValidatorTests
     }
 
     [Fact]
+    public void Validate_WhenShortcodeContainsDigit_ReturnsMatch()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("✏️", "entity", ":pencil2:", "desc", "pencil2", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(":pencil2: Fix typo", gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Equal(gitmojis[0], result.MatchedGitmoji);
+        Assert.Equal("Fix typo", result.RemainingMessage);
+    }
+
+    [Fact]
     public void Validate_WhenNoMatch_ReturnsInvalid()
     {
         var gitmojis = new[]
