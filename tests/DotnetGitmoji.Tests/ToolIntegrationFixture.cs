@@ -98,6 +98,8 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
         foreach (var argument in arguments)
             startInfo.ArgumentList.Add(argument);
 
+        startInfo.Environment["NO_COLOR"] = "1";
+
         if (environment is not null)
             foreach (var (key, value) in environment)
                 startInfo.Environment[key] = value ?? string.Empty;
