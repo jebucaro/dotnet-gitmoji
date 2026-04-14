@@ -3,6 +3,7 @@ using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using Spectre.Console;
 
 namespace DotnetGitmoji.Commands;
 
@@ -34,11 +35,11 @@ public sealed partial class InitCommand : ICommand
         switch (huskyKind)
         {
             case HuskyInstallKind.JsHusky:
-                await console.Output.WriteLineAsync(
-                    "JavaScript Husky detected (.husky/_/husky.sh).\n" +
-                    "This command does not modify JavaScript Husky-managed hooks.\n" +
+                AnsiConsole.MarkupLine(
+                    "[yellow]JavaScript Husky detected ([grey].husky/_/husky.sh[/]).[/]\n" +
+                    "[yellow]This command does not modify JavaScript Husky-managed hooks.[/]\n" +
                     "No files were modified.\n\n" +
-                    "Consider migrating to Husky.Net: https://alirezanet.github.io/Husky.Net/");
+                    "Consider migrating to Husky.Net: [link]https://alirezanet.github.io/Husky.Net/[/]");
                 return;
 
             case HuskyInstallKind.HuskyNetTaskRunner:
@@ -60,8 +61,9 @@ public sealed partial class InitCommand : ICommand
                     throw new CommandException(exception.Message, 1);
                 }
 
-                await console.Output.WriteLineAsync(
-                    $"Husky.Net prepare-commit-msg hook configured using '{GetModeLabel(huskySetupMode.Value)}' mode.");
+                AnsiConsole.MarkupLine(
+                    $"[green]✓[/] Husky.Net [grey]prepare-commit-msg[/] hook configured " +
+                    $"using [white]{GetModeLabel(huskySetupMode.Value)}[/] mode.");
                 return;
         }
 
@@ -69,7 +71,7 @@ public sealed partial class InitCommand : ICommand
             throw new CommandException("The --mode option is only valid when Husky.Net is detected.", 1);
 
         await _gitService.InstallHookDirectAsync();
-        await console.Output.WriteLineAsync("prepare-commit-msg hook installed successfully.");
+        AnsiConsole.MarkupLine("[green]✓[/] [grey]prepare-commit-msg[/] hook installed successfully.");
     }
 
     private HuskySetupMode? ParseHuskySetupMode()

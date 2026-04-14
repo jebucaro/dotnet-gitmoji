@@ -3,6 +3,7 @@ using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using Spectre.Console;
 
 namespace DotnetGitmoji.Commands;
 
@@ -30,24 +31,24 @@ public sealed partial class RemoveCommand : ICommand
             {
                 case HuskyInstallKind.HuskyNetShell:
                 case HuskyInstallKind.HuskyNetTaskRunner:
-                    await console.Output.WriteLineAsync(
-                        $"Hook found in Husky.Net managed file: {hookFile}\n" +
+                    AnsiConsole.MarkupLine(
+                        $"[yellow]Hook found in Husky.Net managed file:[/] [grey]{Markup.Escape(hookFile)}[/]\n" +
                         "To remove, run:\n" +
-                        "  dotnet husky remove prepare-commit-msg\n\n" +
-                        "If init was configured with '--mode task-runner', also remove the\n" +
-                        "'dotnet-gitmoji' task from .husky/task-runner.json.");
+                        "  [white]dotnet husky remove prepare-commit-msg[/]\n\n" +
+                        "If init was configured with [white]--mode task-runner[/], also remove the\n" +
+                        "[white]dotnet-gitmoji[/] task from [grey].husky/task-runner.json[/].");
                     break;
 
                 case HuskyInstallKind.JsHusky:
-                    await console.Output.WriteLineAsync(
-                        $"Hook found in JavaScript Husky managed file: {hookFile}\n" +
-                        "Remove the dotnet-gitmoji line from this file manually.");
+                    AnsiConsole.MarkupLine(
+                        $"[yellow]Hook found in JavaScript Husky managed file:[/] [grey]{Markup.Escape(hookFile)}[/]\n" +
+                        "Remove the [white]dotnet-gitmoji[/] line from this file manually.");
                     break;
 
                 default:
-                    await console.Output.WriteLineAsync(
-                        $"Hook found at: {hookFile}\n" +
-                        "Remove the dotnet-gitmoji line from this file manually.");
+                    AnsiConsole.MarkupLine(
+                        $"[yellow]Hook found at:[/] [grey]{Markup.Escape(hookFile)}[/]\n" +
+                        "Remove the [white]dotnet-gitmoji[/] line from this file manually.");
                     break;
             }
 
@@ -55,6 +56,6 @@ public sealed partial class RemoveCommand : ICommand
         }
 
         await _gitService.RemoveHookDirectAsync();
-        await console.Output.WriteLineAsync("prepare-commit-msg hook removed successfully.");
+        AnsiConsole.MarkupLine("[green]✓[/] [grey]prepare-commit-msg[/] hook removed successfully.");
     }
 }

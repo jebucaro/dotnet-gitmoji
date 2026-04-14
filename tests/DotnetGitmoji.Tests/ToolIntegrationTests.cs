@@ -107,7 +107,7 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
             var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "shell");
 
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("configured using 'shell' mode", result.StandardOutput, StringComparison.Ordinal);
+            Assert.Contains("configured using shell mode", result.StandardOutput, StringComparison.Ordinal);
 
             var huskyHookFile = Path.Combine(repositoryRoot, ".husky", "prepare-commit-msg");
             Assert.True(File.Exists(huskyHookFile));
@@ -132,7 +132,7 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
             var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "task-runner");
 
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("configured using 'task-runner' mode", result.StandardOutput, StringComparison.Ordinal);
+            Assert.Contains("configured using task-runner mode", result.StandardOutput, StringComparison.Ordinal);
 
             var huskyHookFile = Path.Combine(repositoryRoot, ".husky", "prepare-commit-msg");
             Assert.True(File.Exists(huskyHookFile));
@@ -171,7 +171,7 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
             var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "shell");
 
             Assert.Equal(0, result.ExitCode);
-            Assert.Contains("configured using 'shell' mode", result.StandardOutput, StringComparison.Ordinal);
+            Assert.Contains("configured using shell mode", result.StandardOutput, StringComparison.Ordinal);
             Assert.DoesNotContain("JavaScript Husky detected", result.StandardOutput, StringComparison.Ordinal);
             Assert.False(File.Exists(Path.Combine(repositoryRoot, ".git", "hooks", "prepare-commit-msg")));
         });
