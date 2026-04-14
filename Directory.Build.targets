@@ -1,6 +1,6 @@
 <Project>
   <Target Name="HuskyInstall" BeforeTargets="Restore;CollectPackageReferences"
-          Condition="!Exists('$(MSBuildThisFileDirectory).husky\.installed')">
+          Condition="'$(CI)' == '' and !Exists('$(MSBuildThisFileDirectory).husky\.installed')">
     <Exec Command="dotnet tool restore"  StandardOutputImportance="Low" StandardErrorImportance="High" WorkingDirectory="$(MSBuildThisFileDirectory)" />
     <Exec Command="dotnet husky install" StandardOutputImportance="Low" StandardErrorImportance="High" WorkingDirectory="$(MSBuildThisFileDirectory)" />
     <Touch Files="$(MSBuildThisFileDirectory).husky\.installed" AlwaysCreate="true" />
