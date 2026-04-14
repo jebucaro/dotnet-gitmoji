@@ -63,6 +63,18 @@ public sealed class ConfigurationService : IConfigurationService
         }
     }
 
+    public async Task<string?> CreateRepoConfigAsync()
+    {
+        var repoRoot = await _gitService.GetRepositoryRootAsync();
+        var configPath = Path.Combine(repoRoot, ".gitmojirc.json");
+
+        if (File.Exists(configPath)) return null;
+
+        await using var stream = File.Create(configPath);
+        await JsonSerializer.SerializeAsync(stream, new ToolConfiguration(), WriteOptions);
+        return configPath;
+    }
+
     private static async Task<ToolConfiguration> LoadFromPathAsync(string path)
     {
         try
