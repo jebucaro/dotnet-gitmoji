@@ -92,6 +92,64 @@ public class ConfigurationServiceTests
     }
 
     [Fact]
+    public async Task CreateRepoConfigAsync_WhenNoConfigExists_CreatesFileWithDefaults()
+    {
+        var gitService = Substitute.For<IGitService>();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        try
+        {
+            var service = new ConfigurationService(gitService);
+            var createdPath = await service.CreateRepoConfigAsync();
+
+            Assert.NotNull(createdPath);
+            Assert.True(File.Exists(createdPath));
+
+            var config = await service.LoadAsync();
+            var defaults = new ToolConfiguration();
+            Assert.Equal(defaults.EmojiFormat, config.EmojiFormat);
+            Assert.Equal(defaults.ScopePrompt, config.ScopePrompt);
+            Assert.Equal(defaults.MessagePrompt, config.MessagePrompt);
+            Assert.Equal(defaults.CapitalizeTitle, config.CapitalizeTitle);
+            Assert.Equal(defaults.AutoAdd, config.AutoAdd);
+            Assert.Equal(defaults.SignedCommit, config.SignedCommit);
+            Assert.Equal(defaults.GitmojisUrl, config.GitmojisUrl);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task CreateRepoConfigAsync_WhenConfigAlreadyExists_ReturnsNull()
+    {
+        var gitService = Substitute.For<IGitService>();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        var configPath = Path.Combine(tempDir, ".gitmojirc.json");
+        var originalContent = """{ "CapitalizeTitle": false }""";
+        await File.WriteAllTextAsync(configPath, originalContent);
+
+        try
+        {
+            var service = new ConfigurationService(gitService);
+            var createdPath = await service.CreateRepoConfigAsync();
+
+            Assert.Null(createdPath);
+            Assert.Equal(originalContent, await File.ReadAllTextAsync(configPath));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
     public async Task LoadAsync_WhenConfigHasInvalidGitmojisUrl_FallsBackToDefault()
     {
         var gitService = Substitute.For<IGitService>();
