@@ -102,7 +102,7 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
         await WithTemporaryRepositoryAsync(async repositoryRoot =>
         {
             Directory.CreateDirectory(Path.Combine(repositoryRoot, ".husky"));
-            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, shouldSucceed: true);
+            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, true);
 
             var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "shell");
 
@@ -128,7 +128,7 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
             Directory.CreateDirectory(Path.GetDirectoryName(taskRunnerFile)!);
             await File.WriteAllTextAsync(taskRunnerFile, "{}");
 
-            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, shouldSucceed: true);
+            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, true);
             var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "task-runner");
 
             Assert.Equal(0, result.ExitCode);
@@ -167,7 +167,7 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
                 "# dotnet-gitmoji \"$1\" \"$2\"\n" +
                 "# dotnet tool run dotnet-gitmoji -- \"$1\" \"$2\"\n");
 
-            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, shouldSucceed: true);
+            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, true);
             var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "shell");
 
             Assert.Equal(0, result.ExitCode);
@@ -232,7 +232,7 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
         await WithTemporaryRepositoryAsync(async repositoryRoot =>
         {
             Directory.CreateDirectory(Path.Combine(repositoryRoot, ".husky"));
-            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, shouldSucceed: false);
+            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, false);
 
             var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "shell");
 
@@ -298,12 +298,10 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
                 repositoryRoot);
 
             if (chmodResult.ExitCode != 0)
-            {
                 throw new InvalidOperationException(
                     $"chmod failed with exit code {chmodResult.ExitCode}.{Environment.NewLine}" +
                     $"STDOUT:{Environment.NewLine}{chmodResult.StandardOutput}{Environment.NewLine}" +
                     $"STDERR:{Environment.NewLine}{chmodResult.StandardError}");
-            }
         }
 
         var currentPath = Environment.GetEnvironmentVariable("PATH");

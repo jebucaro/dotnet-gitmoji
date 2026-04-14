@@ -222,14 +222,12 @@ public sealed class GitService : IGitService
         }
 
         if (!ContainsTaskNamed(tasks, DotnetGitmojiTaskName))
-        {
             tasks.Add(new JsonObject
             {
                 ["name"] = DotnetGitmojiTaskName,
                 ["command"] = "dotnet-gitmoji",
                 ["args"] = new JsonArray("${args}")
             });
-        }
 
         var json = rootObject.ToJsonString(new JsonSerializerOptions
         {
@@ -248,9 +246,7 @@ public sealed class GitService : IGitService
             if (taskObject["name"] is JsonValue taskNameValue &&
                 taskNameValue.TryGetValue<string>(out var existingName) &&
                 string.Equals(existingName, taskName, StringComparison.OrdinalIgnoreCase))
-            {
                 return true;
-            }
         }
 
         return false;
