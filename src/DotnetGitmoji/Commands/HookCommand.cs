@@ -72,7 +72,7 @@ public sealed partial class HookCommand : ICommand
 
         var selectedGitmoji = _promptService.SelectGitmoji(gitmojis);
 
-        var prefix = config.EmojiFormat == EmojiFormat.Unicode
+        var prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? selectedGitmoji.Emoji
             : selectedGitmoji.Code;
 

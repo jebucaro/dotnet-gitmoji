@@ -1,16 +1,22 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using DotnetGitmoji.Models;
 
 namespace DotnetGitmoji.Services;
 
 public sealed class ConfigurationService : IConfigurationService
 {
-    private static readonly JsonSerializerOptions ReadOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions ReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     private static readonly JsonSerializerOptions WriteOptions = new()
     {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     private readonly IGitService _gitService;

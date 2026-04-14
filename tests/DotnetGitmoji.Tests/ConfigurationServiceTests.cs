@@ -16,7 +16,7 @@ public class ConfigurationServiceTests
         Assert.True(config.CapitalizeTitle);
         Assert.False(config.AutoAdd);
         Assert.False(config.SignedCommit);
-        Assert.Equal(EmojiFormat.Unicode, config.EmojiFormat);
+        Assert.Equal(EmojiFormat.Emoji, config.EmojiFormat);
         Assert.Equal("https://gitmoji.dev/api/gitmojis", config.GitmojisUrl);
         Assert.Null(config.Scopes);
     }

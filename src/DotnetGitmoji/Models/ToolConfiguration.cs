@@ -2,7 +2,7 @@ namespace DotnetGitmoji.Models;
 
 public sealed class ToolConfiguration
 {
-    public EmojiFormat EmojiFormat { get; set; } = EmojiFormat.Unicode;
+    public EmojiFormat EmojiFormat { get; set; } = EmojiFormat.Emoji;
     public bool ScopePrompt { get; set; } = false;
     public bool MessagePrompt { get; set; } = false;
     public bool CapitalizeTitle { get; set; } = true;

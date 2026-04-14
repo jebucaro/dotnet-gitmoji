@@ -25,10 +25,10 @@ public sealed partial class ConfigCommand : ICommand
             new SelectionPrompt<EmojiFormat>()
                 .Title("Select emoji format:")
                 .PageSize(5)
-                .UseConverter(format => format == EmojiFormat.Unicode
-                    ? "Unicode (🐛)"
-                    : "Shortcode (:bug:)")
-                .AddChoices(EmojiFormat.Unicode, EmojiFormat.Shortcode));
+                .UseConverter(format => format == EmojiFormat.Emoji
+                    ? "Emoji (🐛)"
+                    : "Code (:bug:)")
+                .AddChoices(EmojiFormat.Emoji, EmojiFormat.Code));
 
         var scopePrompt = AnsiConsole.Confirm("Prompt for scope?", config.ScopePrompt);
         var messagePrompt = AnsiConsole.Confirm("Prompt for commit message?", config.MessagePrompt);

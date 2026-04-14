@@ -86,7 +86,7 @@ public sealed partial class CommitCommand : ICommand
             ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
             : rawTitle;
 
-        var prefix = config.EmojiFormat == EmojiFormat.Unicode
+        var prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? selected.Emoji
             : selected.Code;
         var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
