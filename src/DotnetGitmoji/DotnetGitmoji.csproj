@@ -11,7 +11,7 @@
         <PackageId>dotnet-gitmoji</PackageId>
         <Version>0.1.0</Version>
         <Title>dotnet-gitmoji</Title>
-        <Authors>dotnet-gitmoji contributors</Authors>
+        <Authors>Jonathan Búcaro</Authors>
         <Description>A gitmoji commit convention CLI tool for .NET</Description>
         <PackageDescription>A gitmoji commit convention CLI tool for .NET projects with interactive and Git hook modes.</PackageDescription>
         <PackageTags>git;gitmoji;commit;cli;dotnet-tool</PackageTags>
@@ -23,6 +23,8 @@
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -41,6 +43,10 @@
     <ItemGroup>
         <None Remove="Resources\gitmojis.default.json"/>
         <EmbeddedResource Include="Resources\gitmojis.default.json"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="../../README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>
