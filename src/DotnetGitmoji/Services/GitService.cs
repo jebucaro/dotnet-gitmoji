@@ -11,7 +11,6 @@ public sealed class GitService : IGitService
 {
     private const string PrepareCommitMessageHookName = "prepare-commit-msg";
     private const string DotnetGitmojiTaskName = "dotnet-gitmoji";
-    private const string ShellHookCommand = "dotnet-gitmoji \"$1\" \"$2\"";
     private const string TaskRunnerHookCommand = "dotnet husky run --name dotnet-gitmoji -- \"$1\" \"$2\"";
 
     public async Task<string> GetRepositoryRootAsync()
@@ -88,15 +87,17 @@ public sealed class GitService : IGitService
     public async Task InstallHuskyNetShellHookAsync()
     {
         var repoRoot = await GetRepositoryRootAsync();
-        await RunDotnetHuskyAddAsync(repoRoot, ShellHookCommand);
+        var command = await BuildShellHookCommandAsync();
+        await RunDotnetHuskyAddAsync(repoRoot, command);
     }
 
     public async Task InstallHuskyNetTaskRunnerHookAsync()
     {
         var repoRoot = await GetRepositoryRootAsync();
         var taskRunnerPath = Path.Combine(repoRoot, ".husky", "task-runner.json");
+        var isLocal = await IsLocalToolManifestAsync();
 
-        await EnsureTaskRunnerContainsDotnetGitmojiTaskAsync(taskRunnerPath);
+        await EnsureTaskRunnerContainsDotnetGitmojiTaskAsync(taskRunnerPath, isLocal);
         await RunDotnetHuskyAddAsync(repoRoot, TaskRunnerHookCommand);
     }
 
@@ -107,7 +108,8 @@ public sealed class GitService : IGitService
         Directory.CreateDirectory(hooksDir);
 
         var hookPath = Path.Combine(hooksDir, PrepareCommitMessageHookName);
-        var script = $"#!/bin/sh\nexec < /dev/tty\n{ShellHookCommand}\n";
+        var command = await BuildShellHookCommandAsync();
+        var script = $"#!/bin/sh\nexec < /dev/tty\n{command}\n";
         await File.WriteAllTextAsync(hookPath, script);
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -184,7 +186,28 @@ public sealed class GitService : IGitService
         throw new InvalidOperationException(message);
     }
 
-    private static async Task EnsureTaskRunnerContainsDotnetGitmojiTaskAsync(string taskRunnerPath)
+    private async Task<bool> IsLocalToolManifestAsync()
+    {
+        var repoRoot = await GetRepositoryRootAsync();
+        var manifestPath = Path.Combine(repoRoot, ".config", "dotnet-tools.json");
+
+        if (!File.Exists(manifestPath))
+            return false;
+
+        var json = await File.ReadAllTextAsync(manifestPath);
+        var node = JsonNode.Parse(json);
+        var tools = node?["tools"] as JsonObject;
+        return tools?.ContainsKey("dotnet-gitmoji") ?? false;
+    }
+
+    private async Task<string> BuildShellHookCommandAsync()
+    {
+        var isLocal = await IsLocalToolManifestAsync();
+        var invocation = isLocal ? "dotnet tool run dotnet-gitmoji" : "dotnet-gitmoji";
+        return $"{invocation} \"$1\" \"$2\"";
+    }
+
+    private static async Task EnsureTaskRunnerContainsDotnetGitmojiTaskAsync(string taskRunnerPath, bool isLocal)
     {
         JsonObject rootObject;
 
@@ -222,12 +245,22 @@ public sealed class GitService : IGitService
         }
 
         if (!ContainsTaskNamed(tasks, DotnetGitmojiTaskName))
-            tasks.Add(new JsonObject
-            {
-                ["name"] = DotnetGitmojiTaskName,
-                ["command"] = "dotnet-gitmoji",
-                ["args"] = new JsonArray("${args}")
-            });
+        {
+            var taskEntry = isLocal
+                ? new JsonObject
+                {
+                    ["name"] = DotnetGitmojiTaskName,
+                    ["command"] = "dotnet",
+                    ["args"] = new JsonArray("tool", "run", "dotnet-gitmoji", "${args}")
+                }
+                : new JsonObject
+                {
+                    ["name"] = DotnetGitmojiTaskName,
+                    ["command"] = "dotnet-gitmoji",
+                    ["args"] = new JsonArray("${args}")
+                };
+            tasks.Add(taskEntry);
+        }
 
         var json = rootObject.ToJsonString(new JsonSerializerOptions
         {
