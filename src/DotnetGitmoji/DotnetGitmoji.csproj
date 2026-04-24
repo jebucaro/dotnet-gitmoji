@@ -9,7 +9,7 @@
         <ToolCommandName>dotnet-gitmoji</ToolCommandName>
         <PackageOutputPath>./nupkg</PackageOutputPath>
         <PackageId>dotnet-gitmoji</PackageId>
-        <Version>0.1.0</Version>
+        <Version>0.2.0</Version>
         <Title>dotnet-gitmoji</Title>
         <Authors>Jonathan Búcaro</Authors>
         <Description>A gitmoji commit convention CLI tool for .NET</Description>
