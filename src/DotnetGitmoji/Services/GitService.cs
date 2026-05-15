@@ -189,15 +189,31 @@ public sealed class GitService : IGitService
     private async Task<bool> IsLocalToolManifestAsync()
     {
         var repoRoot = await GetRepositoryRootAsync();
-        var manifestPath = Path.Combine(repoRoot, ".config", "dotnet-tools.json");
 
-        if (!File.Exists(manifestPath))
-            return false;
+        for (var directory = new DirectoryInfo(repoRoot); directory is not null; directory = directory.Parent)
+        {
+            var candidates = new[]
+            {
+                Path.Combine(directory.FullName, ".config", "dotnet-tools.json"),
+                Path.Combine(directory.FullName, "dotnet-tools.json")
+            };
 
-        var json = await File.ReadAllTextAsync(manifestPath);
-        var node = JsonNode.Parse(json);
-        var tools = node?["tools"] as JsonObject;
-        return tools?.ContainsKey("dotnet-gitmoji") ?? false;
+            foreach (var manifestPath in candidates)
+            {
+                if (!File.Exists(manifestPath))
+                    continue;
+
+                var json = await File.ReadAllTextAsync(manifestPath);
+                var node = JsonNode.Parse(json);
+                if (node?["tools"] is not JsonObject tools)
+                    return false;
+
+                return tools.Any(entry =>
+                    string.Equals(entry.Key, "dotnet-gitmoji", StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        return false;
     }
 
     private async Task<string> BuildShellHookCommandAsync()

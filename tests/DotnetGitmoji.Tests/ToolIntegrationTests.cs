@@ -227,6 +227,69 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
     }
 
     [Fact]
+    public async Task Init_WhenManifestAtRepoRoot_WritesLocalToolHookCommand()
+    {
+        await WithTemporaryRepositoryAsync(async repositoryRoot =>
+        {
+            Directory.CreateDirectory(Path.Combine(repositoryRoot, ".husky"));
+            await WriteToolsManifestAsync(
+                Path.Combine(repositoryRoot, "dotnet-tools.json"),
+                "dotnet-gitmoji");
+            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, true);
+
+            var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "shell");
+
+            Assert.Equal(0, result.ExitCode);
+
+            var hookContent = await File.ReadAllTextAsync(
+                Path.Combine(repositoryRoot, ".husky", "prepare-commit-msg"));
+            Assert.Contains("dotnet tool run dotnet-gitmoji", hookContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task Init_WhenManifestAtParentDirectory_WritesLocalToolHookCommand()
+    {
+        await WithTemporaryParentRepositoryAsync(async (parentDirectory, repositoryRoot) =>
+        {
+            Directory.CreateDirectory(Path.Combine(repositoryRoot, ".husky"));
+            await WriteToolsManifestAsync(
+                Path.Combine(parentDirectory, ".config", "dotnet-tools.json"),
+                "dotnet-gitmoji");
+            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, true);
+
+            var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "shell");
+
+            Assert.Equal(0, result.ExitCode);
+
+            var hookContent = await File.ReadAllTextAsync(
+                Path.Combine(repositoryRoot, ".husky", "prepare-commit-msg"));
+            Assert.Contains("dotnet tool run dotnet-gitmoji", hookContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task Init_WhenManifestKeyHasNonCanonicalCasing_WritesLocalToolHookCommand()
+    {
+        await WithTemporaryRepositoryAsync(async repositoryRoot =>
+        {
+            Directory.CreateDirectory(Path.Combine(repositoryRoot, ".husky"));
+            await WriteToolsManifestAsync(
+                Path.Combine(repositoryRoot, ".config", "dotnet-tools.json"),
+                "Dotnet-Gitmoji");
+            var environment = await CreateDotnetHuskyShimEnvironmentAsync(repositoryRoot, true);
+
+            var result = await _fixture.RunToolAsync(repositoryRoot, environment, "init", "--mode", "shell");
+
+            Assert.Equal(0, result.ExitCode);
+
+            var hookContent = await File.ReadAllTextAsync(
+                Path.Combine(repositoryRoot, ".husky", "prepare-commit-msg"));
+            Assert.Contains("dotnet tool run dotnet-gitmoji", hookContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public async Task Init_WhenDotnetHuskyAddFails_SurfacesExecutionError()
     {
         await WithTemporaryRepositoryAsync(async repositoryRoot =>
@@ -329,9 +392,40 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
         }
     }
 
-    private static async Task<string> CreateTemporaryRepositoryAsync()
+    private static async Task WithTemporaryParentRepositoryAsync(Func<string, string, Task> action)
     {
-        var repositoryRoot = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-repo-{Guid.NewGuid():N}");
+        var parentDirectory = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-parent-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(parentDirectory);
+        try
+        {
+            var repositoryRoot = await CreateTemporaryRepositoryAsync(parentDirectory);
+            await action(parentDirectory, repositoryRoot);
+        }
+        finally
+        {
+            if (Directory.Exists(parentDirectory))
+                Directory.Delete(parentDirectory, true);
+        }
+    }
+
+    private static async Task WriteToolsManifestAsync(string manifestPath, string toolKey)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(manifestPath)!);
+        var contents =
+            "{\n" +
+            "  \"version\": 1,\n" +
+            "  \"isRoot\": true,\n" +
+            "  \"tools\": {\n" +
+            $"    \"{toolKey}\": {{ \"version\": \"0.0.0\", \"commands\": [\"dotnet-gitmoji\"] }}\n" +
+            "  }\n" +
+            "}\n";
+        await File.WriteAllTextAsync(manifestPath, contents);
+    }
+
+    private static async Task<string> CreateTemporaryRepositoryAsync(string? parentDirectory = null)
+    {
+        var basePath = parentDirectory ?? Path.GetTempPath();
+        var repositoryRoot = Path.Combine(basePath, $"dotnet-gitmoji-repo-{Guid.NewGuid():N}");
         Directory.CreateDirectory(repositoryRoot);
 
         var gitInitResult = await ToolIntegrationFixture.RunProcessAsync(
