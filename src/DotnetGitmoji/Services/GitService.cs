@@ -17,9 +17,14 @@ public sealed class GitService : IGitService
     {
         var result = await Cli.Wrap("git")
             .WithArguments(["rev-parse", "--show-toplevel"])
+            .WithValidation(CommandResultValidation.None)
             .ExecuteBufferedAsync();
 
-        return result.StandardOutput.Trim();
+        if (result.ExitCode == 0)
+            return result.StandardOutput.Trim();
+
+        throw new InvalidOperationException(
+            "Not a git repository. Run 'git init' to initialize one.");
     }
 
     public async Task<string?> GetConfigValueAsync(string key)
