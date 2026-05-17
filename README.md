@@ -231,16 +231,16 @@ Example file:
 
 ## Command reference
 
-| Command                                           | Description                                                                    |
-|---------------------------------------------------|--------------------------------------------------------------------------------|
-| `dotnet-gitmoji init --mode shell`                | Install the `prepare-commit-msg` hook via Husky.Net (shell mode)               |
-| `dotnet-gitmoji init --mode task-runner`          | Install the hook via Husky.Net's task runner                                   |
-| `dotnet-gitmoji remove`                           | Uninstall the hook (prints manual cleanup steps for Husky.Net-managed hooks)   |
-| `dotnet-gitmoji commit`                           | Interactive commit (client mode)                                               |
-| `dotnet-gitmoji config`                           | Run the configuration wizard                                                   |
-| `dotnet-gitmoji list`                             | List all available gitmojis                                                    |
-| `dotnet-gitmoji search <keyword>`                 | Fuzzy-search gitmojis by name, code, or description                            |
-| `dotnet-gitmoji update`                           | Refresh the cached gitmoji list from the remote API                            |
+| Command                                  | Description                                                                  |
+|------------------------------------------|------------------------------------------------------------------------------|
+| `dotnet-gitmoji init --mode shell`       | Install the `prepare-commit-msg` hook via Husky.Net (shell mode)             |
+| `dotnet-gitmoji init --mode task-runner` | Install the hook via Husky.Net's task runner                                 |
+| `dotnet-gitmoji remove`                  | Uninstall the hook (prints manual cleanup steps for Husky.Net-managed hooks) |
+| `dotnet-gitmoji commit`                  | Interactive commit (client mode)                                             |
+| `dotnet-gitmoji config`                  | Run the configuration wizard                                                 |
+| `dotnet-gitmoji list`                    | List all available gitmojis                                                  |
+| `dotnet-gitmoji search <keyword>`        | Fuzzy-search gitmojis by name, code, or description                          |
+| `dotnet-gitmoji update`                  | Refresh the cached gitmoji list from the remote API                          |
 
 When installed locally, prefix every command with `dotnet tool run`:
 
