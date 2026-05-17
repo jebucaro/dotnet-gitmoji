@@ -4,171 +4,172 @@
 [![Downloads](https://img.shields.io/nuget/dt/dotnet-gitmoji?style=flat-square)](https://www.nuget.org/packages/dotnet-gitmoji)
 [![License](https://img.shields.io/github/license/jebucaro/dotnet-gitmoji?style=flat-square)](LICENSE)
 
-> Write expressive, emoji-prefixed commit messages in .NET projects — and share the setup with your team via a single
-> `dotnet tool restore`.
-
-`dotnet-gitmoji` brings the [gitmoji](https://gitmoji.dev) commit convention to your .NET workflow. It installs a
-`prepare-commit-msg` hook through [Husky.Net](https://alirezanet.github.io/Husky.Net/) so the hook lives alongside
-your source — when a teammate clones the repo and runs `dotnet tool restore`, the hook is ready on their first
-commit. A client mode (`dotnet-gitmoji commit`) is available for one-off use on machines where you don't want a hook.
-
----
-
-## Features
-
-- 🤝 **Team-friendly** — installs into Husky.Net so the hook ships with the repo; teammates inherit it on `dotnet tool restore`
-- 🪝 **Two Husky.Net modes** — shell hook (simplest) or task-runner integration for repos already using it
-- 💻 **Client mode** — `dotnet-gitmoji commit` for one-off use without a hook
-- 🔍 **Fuzzy search** — find the right emoji by name, code, or description
-- ⚙️ **Flexible config** — per-repo `.gitmojirc.json` or a personal global fallback
+`dotnet-gitmoji` brings the [gitmoji](https://gitmoji.dev) commit convention to .NET projects. It installs a
+`prepare-commit-msg` hook through [Husky.Net](https://alirezanet.github.io/Husky.Net/) so the hook travels with the
+repo. When a teammate clones the repo and runs `dotnet tool restore`, the hook is ready on their first commit.
 
 ---
 
 ## Requirements
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) or later
-- [Husky.Net](https://alirezanet.github.io/Husky.Net/) — installed as a local tool (recipe in [Quick Start](#quick-start))
-- On Windows, the hook script runs under Git Bash, which ships with [Git for Windows](https://git-scm.com/download/win)
+- [Git for Windows](https://git-scm.com/download/win) (Windows only; the hook runs under Git Bash)
 
 ---
 
-## Installation
+## First-developer setup
 
-### Local (recommended)
+Run these steps once in your repo. After you commit the generated files, every teammate gets the hook automatically.
+
+**Step 1: Add both tools to the local tool manifest**
 
 ```sh
 dotnet new tool-manifest   # skip if .config/dotnet-tools.json already exists
+dotnet tool install Husky
 dotnet tool install dotnet-gitmoji
 ```
 
-Commit `.config/dotnet-tools.json` to your repo. Teammates get the tool with a single `dotnet tool restore` after
-cloning — no per-machine install required.
+This creates `.config/dotnet-tools.json`, which pins both tool versions for the whole team.
 
-> [!IMPORTANT]
-> When installed locally, prefix every command with `dotnet tool run`:
-> ```sh
-> dotnet tool run dotnet-gitmoji init --mode shell
-> dotnet tool run dotnet-gitmoji commit
-> ```
-> The tool detects local installation automatically and generates the correct hook command.
-
-### Global
+**Step 2: Initialize Husky.Net**
 
 ```sh
-dotnet tool install --global dotnet-gitmoji
+dotnet tool run husky install
 ```
 
-Use `dotnet-gitmoji <command>` directly anywhere in your terminal. Global install is convenient for personal use
-across repos, but it does not share the tool with teammates — prefer the local install for any shared project.
+Sets `core.hooksPath` to `.husky/` and creates the `.husky/` directory with the Husky.Net helper scripts.
+
+**Step 3: Install the gitmoji hook**
+
+```sh
+dotnet tool run dotnet-gitmoji init --mode shell
+```
+
+Adds a `prepare-commit-msg` hook to `.husky/`. The hook file is plain text and safe to commit.
+
+**Step 4: Add the MSBuild target**
+
+Create `Directory.Build.targets` at the repo root:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <HuskyRoot Condition="'$(HuskyRoot)' == ''">$(MSBuildThisFileDirectory)</HuskyRoot>
+  </PropertyGroup>
+  <Target Name="Husky" AfterTargets="Restore" Condition="'$(HUSKY)' != 0"
+          Inputs="$(HuskyRoot).config/dotnet-tools.json"
+          Outputs="$(HuskyRoot).husky/_/install.stamp">
+    <Exec Command="dotnet tool restore"
+          StandardOutputImportance="Low" StandardErrorImportance="High" />
+    <Exec Command="dotnet husky install"
+          StandardOutputImportance="Low" StandardErrorImportance="High"
+          WorkingDirectory="$(HuskyRoot)" />
+    <Touch Files="$(HuskyRoot).husky/_/install.stamp" AlwaysCreate="true"
+           Condition="Exists('$(HuskyRoot).husky/_')" />
+    <ItemGroup>
+      <FileWrites Include="$(HuskyRoot).husky/_/install.stamp" />
+    </ItemGroup>
+  </Target>
+</Project>
+```
+
+This target runs `dotnet tool restore` and `dotnet husky install` automatically whenever a teammate restores or
+opens the project in Visual Studio or Rider. The `Inputs`/`Outputs` pair gives MSBuild incremental build support:
+the target re-runs only when `.config/dotnet-tools.json` changes (a tool version bump) or after `dotnet clean`.
+The stamp file it creates lives in `.husky/_/`, which is already gitignored by Husky.Net, so no `.gitignore`
+entry is needed.
+
+> [!TIP]
+> If your repo has a single `.csproj`, you can skip creating `Directory.Build.targets` manually. Run
+> `dotnet tool run husky attach <path-to.csproj>` instead. Husky.Net adds the same target directly to your
+> project file.
+
+> [!NOTE]
+> Set the `HUSKY` environment variable to `0` in your CI environment to skip hook installation in pipelines.
+
+**Step 5: Commit everything**
+
+```sh
+git add .config/dotnet-tools.json .husky/ Directory.Build.targets
+git commit -m "chore: add dotnet-gitmoji hook"
+```
+
+That is all the first developer needs to do. Teammates get the hook without any manual steps.
 
 ---
 
-## Quick Start
+## Joining a repo
 
-The recommended setup uses a local tool manifest and Husky.Net's shell-mode hook. After these four steps, both you
-and any teammate cloning the repo will get the gitmoji prompt on `git commit`.
+If the repo already has dotnet-gitmoji set up (it has a `.husky/` directory and `Directory.Build.targets`), run:
 
 ```sh
-# 1. Add Husky.Net and dotnet-gitmoji to your tool manifest
-dotnet new tool-manifest
-dotnet tool install Husky
-dotnet tool install dotnet-gitmoji
-
-# 2. Initialize Husky.Net (creates .husky/, sets core.hooksPath)
-dotnet tool run husky install
-
-# 3. Install the gitmoji prepare-commit-msg hook
-dotnet tool run dotnet-gitmoji init --mode shell
-
-# 4. Commit as usual — pick an emoji at the prompt
-git commit
+dotnet restore
 ```
 
-To remove the hook later:
+Or simply open the project in Visual Studio or Rider. Both trigger the MSBuild target in `Directory.Build.targets`,
+which runs `dotnet tool restore` and `dotnet husky install` in sequence. `dotnet husky install` does two things:
+sets `core.hooksPath` to `.husky/` so git finds the committed hook, and creates the `.husky/_/` helper directory
+that the hook script sources at runtime.
+
+Your next `git commit` opens the gitmoji prompt.
+
+> [!IMPORTANT]
+> You must run `dotnet restore` (NuGet package restore) before your first commit, not `dotnet tool restore`.
+> `dotnet tool restore` only installs .NET tools and does not trigger MSBuild. Without MSBuild running
+> `dotnet husky install`, `core.hooksPath` is never set, git looks in `.git/hooks/` instead of `.husky/`,
+> and the gitmoji prompt silently does not appear.
+
+If the repo has no project file (no `.csproj`) to trigger NuGet restore, run the two steps manually instead:
+
+```sh
+dotnet tool restore
+dotnet tool run husky install
+```
+
+To remove the hook:
 
 ```sh
 dotnet tool run dotnet-gitmoji remove
 ```
 
 > [!NOTE]
-> For Husky.Net hooks, `remove` prints manual cleanup instructions instead of editing `.husky/` files itself —
-> follow the printed steps to fully detach the hook.
-
-For the full team-onboarding setup (so teammates need only `dotnet tool restore`), see
-[Sharing with your team](#sharing-with-your-team).
+> `remove` prints manual cleanup instructions for Husky.Net-managed hooks rather than editing `.husky/` directly.
+> Follow the printed steps to fully detach the hook.
 
 ---
 
 ## Usage
 
-### Hook Mode (recommended)
+### Hook mode
 
-`dotnet-gitmoji init --mode shell` appends a `dotnet-gitmoji` invocation to `.husky/prepare-commit-msg` via
-`dotnet husky add`. The file lives in `.husky/` — committed to the repo — so the hook follows the project rather
-than the developer's machine.
-
-After init, just commit normally:
+After setup, commit normally:
 
 ```sh
 git commit
-git commit -m "fix login redirect"   # message pre-filled as title
+git commit -m "fix login redirect"   # message pre-filled as the title suggestion
 ```
 
-When you pass `-m`, the message is pre-filled as the title suggestion at the prompt. The hook skips itself on merge,
-squash, amend, and during interactive rebase, so automated commit flows aren't interrupted.
+When you pass `-m`, the value is offered as a pre-filled title at the gitmoji prompt. The hook skips itself during
+merge commits, squash merges, amends, and interactive rebases so automated flows are not interrupted.
 
-#### Task-runner mode
+### Client mode
 
-If your repo already uses Husky.Net's task runner, use `--mode task-runner` instead. This adds a `dotnet-gitmoji`
-task to `.husky/task-runner.json` and registers the hook to invoke it:
+Use `dotnet-gitmoji commit` as a drop-in for `git commit` when you prefer not to install a hook:
 
 ```sh
-dotnet tool run dotnet-gitmoji init --mode task-runner
+dotnet tool run dotnet-gitmoji commit
+dotnet tool run dotnet-gitmoji commit --title "fix login redirect"
+dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth --message "Resolves #42"
 ```
-
-Both modes produce the same prompt experience — pick whichever matches your existing Husky.Net setup.
-
-### Client Mode
-
-`dotnet-gitmoji commit` works as a drop-in replacement for `git commit` when you prefer not to install a hook.
 
 > [!NOTE]
 > Client mode is disabled when a hook is already installed, to prevent the emoji from being applied twice.
-> Client mode also runs only on the local machine — it doesn't share anything with teammates.
-
-```sh
-dotnet-gitmoji commit
-dotnet-gitmoji commit --title "fix login redirect"
-dotnet-gitmoji commit --title "fix login redirect" --scope auth --message "Resolves #42"
-```
 
 | Option      | Short | Description                           |
 |-------------|-------|---------------------------------------|
 | `--title`   | `-t`  | Commit title (skips the title prompt) |
-| `--scope`   | `-s`  | Commit scope (e.g. `feat(auth): …`)   |
+| `--scope`   | `-s`  | Commit scope (e.g. `feat(auth): ...`) |
 | `--message` | `-m`  | Commit message body                   |
-
-### Sharing with your team
-
-To make the gitmoji hook fire automatically for every teammate after they clone the repo:
-
-1. **Use a local tool manifest.** Run `dotnet new tool-manifest` and install both tools locally so they're listed
-   in `.config/dotnet-tools.json`:
-   ```sh
-   dotnet tool install Husky
-   dotnet tool install dotnet-gitmoji
-   ```
-2. **Add a `post-restore` MSBuild target.** Wire `dotnet tool restore` to also run `dotnet husky install`
-   automatically. Husky.Net documents the exact target snippet to use — see
-   [Husky.Net: Automatic Husky Install](https://alirezanet.github.io/Husky.Net/guide/automate.html). For multi-project
-   solutions, place the target in a `Directory.Build.targets` file at the repo root.
-3. **Run `dotnet-gitmoji init --mode shell` once** and commit the resulting `.config/dotnet-tools.json`, `.husky/`
-   directory, and the `.csproj` / `Directory.Build.targets` changes from step 2.
-4. **Teammates clone and run `dotnet tool restore`.** That single command installs both tools, runs `husky install`,
-   and activates the hook. Their next `git commit` opens the gitmoji prompt — no manual setup, no global install.
-
-Direct hooks under `.git/hooks/` cannot do this: `.git/` is never committed, so every teammate would need to
-re-run `init` themselves. The Husky.Net path is the only setup that actually transfers across machines.
 
 ---
 
@@ -176,18 +177,18 @@ re-run `init` themselves. The Husky.Net path is the only setup that actually tra
 
 ### Interactive wizard
 
-The quickest way to configure preferences — walks through every option and saves to the global config:
-
 ```sh
-dotnet-gitmoji config
+dotnet tool run dotnet-gitmoji config
 ```
+
+Walks through every option and saves to `~/.dotnet-gitmoji/config.json`.
 
 ### Manual configuration
 
-Create a `.gitmojirc.json` in your repo root, or generate one with defaults by passing `--config` to `init`:
+Create `.gitmojirc.json` in your repo root, or generate one with defaults:
 
 ```sh
-dotnet-gitmoji init --mode shell --config
+dotnet tool run dotnet-gitmoji init --mode shell --config
 ```
 
 Example file:
@@ -210,41 +211,77 @@ Example file:
 | Key               | Type                  | Default                            | Description                                                       |
 |-------------------|-----------------------|------------------------------------|-------------------------------------------------------------------|
 | `emojiFormat`     | `"Emoji"` \| `"Code"` | `"Emoji"`                          | Prefix with the emoji character (`🐛`) or its shortcode (`:bug:`) |
-| `scopePrompt`     | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): …`)                  |
+| `scopePrompt`     | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): ...`)                |
 | `messagePrompt`   | `bool`                | `false`                            | Prompt for an optional commit message body                        |
 | `capitalizeTitle` | `bool`                | `true`                             | Automatically capitalize the first letter of the commit title     |
 | `gitmojisUrl`     | `string`              | `https://gitmoji.dev/api/gitmojis` | URL to fetch the gitmoji list from                                |
-| `autoAdd`         | `bool`                | `false`                            | Stage all changes before committing *(client mode only)*          |
-| `signedCommit`    | `bool`                | `false`                            | Sign commits with GPG (`git commit -S`) *(client mode only)*      |
+| `autoAdd`         | `bool`                | `false`                            | Stage all changes before committing (client mode only)            |
+| `signedCommit`    | `bool`                | `false`                            | Sign commits with GPG (client mode only)                          |
 | `scopes`          | `string[]` \| `null`  | `null`                             | Predefined scope suggestions shown when `scopePrompt` is `true`   |
 
 ### Config resolution order
 
-The tool looks for configuration in this order, using the first match:
-
-| Location                                                 | Purpose                                         |
-|----------------------------------------------------------|-------------------------------------------------|
-| `.gitmojirc.json` in repo root (or any parent directory) | Shared team settings — commit this to your repo |
-| `~/.dotnet-gitmoji/config.json`                          | Personal global fallback                        |
-| Built-in defaults                                        | Applied when no config file exists              |
+| Location                                                 | Purpose                                        |
+|----------------------------------------------------------|------------------------------------------------|
+| `.gitmojirc.json` in repo root (or any parent directory) | Shared team settings; commit this to your repo |
+| `~/.dotnet-gitmoji/config.json`                          | Personal global fallback                       |
+| Built-in defaults                                        | Applied when no config file exists             |
 
 ---
 
-## Commands
+## Command reference
 
-| Command                           | Description                                                                          |
-|-----------------------------------|--------------------------------------------------------------------------------------|
-| `dotnet-gitmoji init --mode shell` | Install the `prepare-commit-msg` hook via Husky.Net (shell mode)                    |
-| `dotnet-gitmoji init --mode task-runner` | Install the hook via Husky.Net's task runner                                  |
-| `dotnet-gitmoji remove`           | Uninstall the hook (prints manual cleanup steps for Husky.Net-managed hooks)         |
-| `dotnet-gitmoji commit`           | Interactive commit (client mode)                                                     |
-| `dotnet-gitmoji config`           | Run the configuration wizard                                                         |
-| `dotnet-gitmoji list`             | List all available gitmojis                                                          |
-| `dotnet-gitmoji search <keyword>` | Fuzzy-search gitmojis by name, code, or description                                  |
-| `dotnet-gitmoji update`           | Refresh the cached gitmoji list from the remote API                                  |
+| Command                                           | Description                                                                    |
+|---------------------------------------------------|--------------------------------------------------------------------------------|
+| `dotnet-gitmoji init --mode shell`                | Install the `prepare-commit-msg` hook via Husky.Net (shell mode)               |
+| `dotnet-gitmoji init --mode task-runner`          | Install the hook via Husky.Net's task runner                                   |
+| `dotnet-gitmoji remove`                           | Uninstall the hook (prints manual cleanup steps for Husky.Net-managed hooks)   |
+| `dotnet-gitmoji commit`                           | Interactive commit (client mode)                                               |
+| `dotnet-gitmoji config`                           | Run the configuration wizard                                                   |
+| `dotnet-gitmoji list`                             | List all available gitmojis                                                    |
+| `dotnet-gitmoji search <keyword>`                 | Fuzzy-search gitmojis by name, code, or description                            |
+| `dotnet-gitmoji update`                           | Refresh the cached gitmoji list from the remote API                            |
+
+When installed locally, prefix every command with `dotnet tool run`:
+
+```sh
+dotnet tool run dotnet-gitmoji init --mode shell
+dotnet tool run dotnet-gitmoji commit
+```
+
+---
+
+## Other installation paths
+
+### Global install
+
+Global install is convenient for personal use across repos. It does not share the tool with teammates; each
+teammate would need to install it globally themselves. For shared projects, use the local install path above.
+
+```sh
+dotnet tool install --global Husky
+dotnet tool install --global dotnet-gitmoji
+husky install
+dotnet-gitmoji init --mode shell
+```
+
+Then add `Directory.Build.targets` (same content as the local variant) and commit `.husky/` and
+`Directory.Build.targets`. Note that `.config/dotnet-tools.json` is not involved for global installs.
+
+### Task-runner mode
+
+If your repo already uses Husky.Net's task runner, use `--mode task-runner` instead of `--mode shell`. This adds a
+`dotnet-gitmoji` entry to `.husky/task-runner.json` and registers the hook to invoke it:
+
+```sh
+dotnet tool run dotnet-gitmoji init --mode task-runner
+```
+
+Both modes produce the same prompt experience. Use shell mode unless you already have a `task-runner.json` with
+other tasks in it.
 
 ---
 
 ## License
 
-MIT — [Jonathan Búcaro](https://github.com/jebucaro)
+MIT, [Jonathan Búcaro](https://github.com/jebucaro)
