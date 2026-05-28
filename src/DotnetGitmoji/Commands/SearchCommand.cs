@@ -33,13 +33,13 @@ public sealed partial class SearchCommand : ICommand
         }
 
         var table = new Table()
+            .Border(TableBorder.Simple)
             .AddColumn("Emoji")
             .AddColumn("Code")
             .AddColumn("Description");
 
         foreach (var g in results)
-            table.AddRow(new Text(g.Emoji.Replace("\uFE0F", "").Split('\u200D')[0]), new Text(g.Code),
-                new Text(g.Description));
+            table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description));
 
         AnsiConsole.MarkupLine($"[grey]Found {results.Count} gitmoji(s) matching '[white]{escapedKeyword}[/]':[/]");
         AnsiConsole.Write(table);

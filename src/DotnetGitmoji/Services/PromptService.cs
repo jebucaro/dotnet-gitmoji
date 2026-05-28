@@ -38,14 +38,20 @@ public sealed partial class PromptService : IPromptService
         if (gitmojis.Count == 0)
             throw new InvalidOperationException("Cannot show an empty gitmoji list.");
 
-        return SelectWithFuzzySearch(
+        var result = SelectWithFuzzySearch(
             gitmojis,
             "Choose a gitmoji:",
             "Type to fuzzy search gitmojis...",
             GitmojiPageSize,
             gitmoji =>
-                $"{Markup.Escape(gitmoji.Emoji)} - {Markup.Escape(gitmoji.Description)} [grey]({Markup.Escape(gitmoji.Code)})[/]",
+                $"{Markup.Escape(gitmoji.Emoji)} - {Markup.Escape(gitmoji.Description)}",
             (items, query) => _fuzzyMatcher.RankGitmojis(items, query));
+
+        Console.Clear();
+        _console.MarkupLine(
+            $"[green]✔[/] [bold]Gitmoji:[/] {Markup.Escape(result.Emoji)} [grey]{Markup.Escape(result.Description)}[/]");
+
+        return result;
     }
 
     public string? AskScope(IReadOnlyList<string>? predefinedScopes = null)

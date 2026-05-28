@@ -20,13 +20,13 @@ public sealed partial class ListCommand : ICommand
     {
         var gitmojis = await _gitmojiProvider.GetAllAsync();
         var table = new Table()
+            .Border(TableBorder.Simple)
             .AddColumn("Emoji")
             .AddColumn("Code")
             .AddColumn("Description");
 
         foreach (var g in gitmojis)
-            table.AddRow(new Text(g.Emoji.Replace("\uFE0F", "").Split('\u200D')[0]), new Text(g.Code),
-                new Text(g.Description));
+            table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description));
 
         AnsiConsole.Write(table);
     }
