@@ -28,21 +28,8 @@ public sealed class ConfigurationService : IConfigurationService
 
     public async Task<ToolConfiguration> LoadAsync()
     {
-        var repoRoot = await _gitService.GetRepositoryRootAsync();
-
-        // Walk from repo root upward looking for .gitmojirc.json
-        var dir = new DirectoryInfo(repoRoot);
-        while (dir is not null)
-            try
-            {
-                var configPath = Path.Combine(dir.FullName, ".gitmojirc.json");
-                if (File.Exists(configPath)) return await LoadFromPathAsync(configPath);
-                dir = dir.Parent;
-            }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException)
-            {
-                break; // Can't access this directory, stop walking
-            }
+        var localPath = await FindLocalConfigPathAsync();
+        if (localPath is not null) return await LoadFromPathAsync(localPath);
 
         var globalConfigPath = DotnetGitmojiPaths.GlobalConfigPath;
         if (File.Exists(globalConfigPath)) return await LoadFromPathAsync(globalConfigPath);
@@ -50,20 +37,43 @@ public sealed class ConfigurationService : IConfigurationService
         return new ToolConfiguration();
     }
 
-    public async Task SaveAsync(ToolConfiguration config)
+    private async Task<string?> FindLocalConfigPathAsync()
+    {
+        try
+        {
+            var repoRoot = await _gitService.GetRepositoryRootAsync();
+            var configPath = Path.Combine(repoRoot, ".gitmojirc.json");
+            return File.Exists(configPath) ? configPath : null;
+        }
+        catch
+        {
+            return null; // not in a git repo
+        }
+    }
+
+    public async Task SaveAsync(ToolConfiguration config, ConfigSaveTarget target = ConfigSaveTarget.Auto)
     {
         ArgumentNullException.ThrowIfNull(config);
 
+        var savePath = target switch
+        {
+            ConfigSaveTarget.Global => DotnetGitmojiPaths.GlobalConfigPath,
+            ConfigSaveTarget.Local => Path.Combine(await _gitService.GetRepositoryRootAsync(), ".gitmojirc.json"),
+            _ => await FindLocalConfigPathAsync() ?? DotnetGitmojiPaths.GlobalConfigPath
+        };
+
         try
         {
-            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
-            await using var stream = File.Create(DotnetGitmojiPaths.GlobalConfigPath);
+            if (savePath == DotnetGitmojiPaths.GlobalConfigPath)
+                Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+
+            await using var stream = File.Create(savePath);
             await JsonSerializer.SerializeAsync(stream, config, WriteOptions);
         }
         catch (UnauthorizedAccessException)
         {
             Console.Error.WriteLine(
-                $"Error: Permission denied writing config to {DotnetGitmojiPaths.GlobalConfigPath}. " +
+                $"Error: Permission denied writing config to {savePath}. " +
                 "Check file/directory permissions.");
             throw;
         }

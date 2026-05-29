@@ -5,7 +5,7 @@ namespace DotnetGitmoji.Services;
 public interface IConfigurationService
 {
     Task<ToolConfiguration> LoadAsync();
-    Task SaveAsync(ToolConfiguration config);
+    Task SaveAsync(ToolConfiguration config, ConfigSaveTarget target = ConfigSaveTarget.Auto);
 
     /// <summary>Returns the path of the created file, or null if it already existed.</summary>
     Task<string?> CreateRepoConfigAsync();
