@@ -6,5 +6,6 @@
   "gitmojisUrl": "https://gitmoji.dev/api/gitmojis",
   "autoAdd": false,
   "signedCommit": true,
-  "scopes": null
+  "scopes": null,
+  "enforceConvention": true
 }
