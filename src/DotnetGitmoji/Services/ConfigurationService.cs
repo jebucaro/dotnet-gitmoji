@@ -55,12 +55,18 @@ public sealed class ConfigurationService : IConfigurationService
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        var savePath = target switch
-        {
-            ConfigSaveTarget.Global => DotnetGitmojiPaths.GlobalConfigPath,
-            ConfigSaveTarget.Local => Path.Combine(await _gitService.GetRepositoryRootAsync(), ".gitmojirc.json"),
-            _ => await FindLocalConfigPathAsync() ?? DotnetGitmojiPaths.GlobalConfigPath
-        };
+        string savePath;
+        if (target == ConfigSaveTarget.Global)
+            savePath = DotnetGitmojiPaths.GlobalConfigPath;
+        else
+            try
+            {
+                savePath = Path.Combine(await _gitService.GetRepositoryRootAsync(), ".gitmojirc.json");
+            }
+            catch
+            {
+                savePath = DotnetGitmojiPaths.GlobalConfigPath; // not in a git repo
+            }
 
         try
         {
