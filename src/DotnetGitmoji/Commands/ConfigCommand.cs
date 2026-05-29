@@ -17,8 +17,16 @@ public sealed partial class ConfigCommand : ICommand
         _configurationService = configurationService;
     }
 
+    [CommandOption("global", 'g', Description = "Save to global config (~/.dotnet-gitmoji/config.json)")]
+    public bool Global { get; set; }
+
+    [CommandOption("local", 'l', Description = "Save to local repo config (.gitmojirc.json)")]
+    public bool Local { get; set; }
+
     public async ValueTask ExecuteAsync(IConsole console)
     {
+        if (Global && Local)
+            throw new CommandException("Cannot specify both --global and --local.", 1);
         var config = await _configurationService.LoadAsync();
 
         var emojiFormat = AnsiConsole.Prompt(
@@ -68,7 +76,8 @@ public sealed partial class ConfigCommand : ICommand
         config.GitmojisUrl = gitmojisUrl;
         config.Scopes = scopes;
 
-        await _configurationService.SaveAsync(config);
+        var target = Global ? ConfigSaveTarget.Global : Local ? ConfigSaveTarget.Local : ConfigSaveTarget.Auto;
+        await _configurationService.SaveAsync(config, target);
         await console.Output.WriteLineAsync("Configuration saved.");
     }
 }
