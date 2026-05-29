@@ -27,7 +27,7 @@ public sealed partial class ConfigCommand : ICommand
                 .PageSize(5)
                 .UseConverter(format => format == EmojiFormat.Emoji
                     ? "Emoji (🐛)"
-                    : "Code (:bug:)")
+                    : "Code (:​bug:)") // zero-width space breaks Spectre.Console :name: emoji pattern
                 .AddChoices(EmojiFormat.Emoji, EmojiFormat.Code));
 
         var scopePrompt = AnsiConsole.Confirm("Prompt for scope?", config.ScopePrompt);
