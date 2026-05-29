@@ -35,6 +35,9 @@ public sealed partial class ConfigCommand : ICommand
         var capitalizeTitle = AnsiConsole.Confirm("Capitalize commit title?", config.CapitalizeTitle);
         var autoAdd = AnsiConsole.Confirm("Auto-add changes before commit? (client mode only)", config.AutoAdd);
         var signedCommit = AnsiConsole.Confirm("Sign commits with GPG? (client mode only)", config.SignedCommit);
+        var enforceConvention = AnsiConsole.Confirm(
+            "Enforce gitmoji convention on all commits (including IDE/non-interactive)?",
+            config.EnforceConvention);
 
         var gitmojisUrl = AnsiConsole.Prompt(
             new TextPrompt<string>("Gitmojis API URL:")
@@ -61,6 +64,7 @@ public sealed partial class ConfigCommand : ICommand
         config.CapitalizeTitle = capitalizeTitle;
         config.AutoAdd = autoAdd;
         config.SignedCommit = signedCommit;
+        config.EnforceConvention = enforceConvention;
         config.GitmojisUrl = gitmojisUrl;
         config.Scopes = scopes;
 

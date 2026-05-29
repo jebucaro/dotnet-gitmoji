@@ -10,4 +10,5 @@ public sealed class ToolConfiguration
     public bool AutoAdd { get; set; } = false;
     public bool SignedCommit { get; set; } = false;
     public string[]? Scopes { get; set; }
+    public bool EnforceConvention { get; set; } = false;
 }

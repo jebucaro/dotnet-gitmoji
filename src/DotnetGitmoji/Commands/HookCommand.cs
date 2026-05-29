@@ -64,6 +64,12 @@ public sealed partial class HookCommand : ICommand
 
         if (!_promptService.IsInteractive)
         {
+            if (config.EnforceConvention)
+                throw new CommandException(
+                    "dotnet-gitmoji: commit rejected — message does not follow the gitmoji convention.\n" +
+                    "Start your commit title with a gitmoji emoji or shortcode (e.g. \":bug: Fix login crash\").",
+                    1);
+
             await console.Error.WriteLineAsync(
                 "⚠ dotnet-gitmoji: no interactive terminal available, " +
                 "keeping original commit message.");
