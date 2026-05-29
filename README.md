@@ -181,7 +181,8 @@ dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth 
 dotnet tool run dotnet-gitmoji config
 ```
 
-Walks through every option and saves to `~/.dotnet-gitmoji/config.json`.
+Walks through every option and saves to `.gitmojirc.json` in the repo root (creating it if absent). Use `--global` to
+save to the personal global config (`~/.dotnet-gitmoji/config.json`) instead.
 
 ### Manual configuration
 
@@ -202,45 +203,47 @@ Example file:
   "gitmojisUrl": "https://gitmoji.dev/api/gitmojis",
   "autoAdd": false,
   "signedCommit": false,
-  "scopes": null
+  "scopes": null,
+  "enforceConvention": false
 }
 ```
 
 ### Configuration reference
 
-| Key               | Type                  | Default                            | Description                                                       |
-|-------------------|-----------------------|------------------------------------|-------------------------------------------------------------------|
-| `emojiFormat`     | `"Emoji"` \| `"Code"` | `"Emoji"`                          | Prefix with the emoji character (`🐛`) or its shortcode (`:bug:`) |
-| `scopePrompt`     | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): ...`)                |
-| `messagePrompt`   | `bool`                | `false`                            | Prompt for an optional commit message body                        |
-| `capitalizeTitle` | `bool`                | `true`                             | Automatically capitalize the first letter of the commit title     |
-| `gitmojisUrl`     | `string`              | `https://gitmoji.dev/api/gitmojis` | URL to fetch the gitmoji list from                                |
-| `autoAdd`         | `bool`                | `false`                            | Stage all changes before committing (client mode only)            |
-| `signedCommit`    | `bool`                | `false`                            | Sign commits with GPG (client mode only)                          |
-| `scopes`          | `string[]` \| `null`  | `null`                             | Predefined scope suggestions shown when `scopePrompt` is `true`   |
+| Key                 | Type                  | Default                            | Description                                                                                                 |
+|---------------------|-----------------------|------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| `emojiFormat`       | `"Emoji"` \| `"Code"` | `"Emoji"`                          | Prefix with the emoji character (`🐛`) or its shortcode (`:bug:`)                                           |
+| `scopePrompt`       | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): ...`)                                                          |
+| `messagePrompt`     | `bool`                | `false`                            | Prompt for an optional commit message body                                                                  |
+| `capitalizeTitle`   | `bool`                | `true`                             | Automatically capitalize the first letter of the commit title                                               |
+| `gitmojisUrl`       | `string`              | `https://gitmoji.dev/api/gitmojis` | URL to fetch the gitmoji list from                                                                          |
+| `autoAdd`           | `bool`                | `false`                            | Stage all changes before committing (client mode only)                                                      |
+| `signedCommit`      | `bool`                | `false`                            | Sign commits with GPG (client mode only)                                                                    |
+| `scopes`            | `string[]` \| `null`  | `null`                             | Predefined scope suggestions shown when `scopePrompt` is `true`                                             |
+| `enforceConvention` | `bool`                | `false`                            | Reject commits that don't start with a gitmoji when no interactive terminal is available (e.g. IDE commits) |
 
 ### Config resolution order
 
-| Location                                                 | Purpose                                        |
-|----------------------------------------------------------|------------------------------------------------|
-| `.gitmojirc.json` in repo root (or any parent directory) | Shared team settings; commit this to your repo |
-| `~/.dotnet-gitmoji/config.json`                          | Personal global fallback                       |
-| Built-in defaults                                        | Applied when no config file exists             |
+| Location                        | Purpose                                        |
+|---------------------------------|------------------------------------------------|
+| `.gitmojirc.json` in repo root  | Shared team settings; commit this to your repo |
+| `~/.dotnet-gitmoji/config.json` | Personal global fallback                       |
+| Built-in defaults               | Applied when no config file exists             |
 
 ---
 
 ## Command reference
 
-| Command                                  | Description                                                                  |
-|------------------------------------------|------------------------------------------------------------------------------|
-| `dotnet-gitmoji init --mode shell`       | Install the `prepare-commit-msg` hook via Husky.Net (shell mode)             |
-| `dotnet-gitmoji init --mode task-runner` | Install the hook via Husky.Net's task runner                                 |
-| `dotnet-gitmoji remove`                  | Uninstall the hook (prints manual cleanup steps for Husky.Net-managed hooks) |
-| `dotnet-gitmoji commit`                  | Interactive commit (client mode)                                             |
-| `dotnet-gitmoji config`                  | Run the configuration wizard                                                 |
-| `dotnet-gitmoji list`                    | List all available gitmojis                                                  |
-| `dotnet-gitmoji search <keyword>`        | Fuzzy-search gitmojis by name, code, or description                          |
-| `dotnet-gitmoji update`                  | Refresh the cached gitmoji list from the remote API                          |
+| Command                                  | Description                                                                                          |
+|------------------------------------------|------------------------------------------------------------------------------------------------------|
+| `dotnet-gitmoji init --mode shell`       | Install the `prepare-commit-msg` hook via Husky.Net (shell mode)                                     |
+| `dotnet-gitmoji init --mode task-runner` | Install the hook via Husky.Net's task runner                                                         |
+| `dotnet-gitmoji remove`                  | Uninstall the hook (prints manual cleanup steps for Husky.Net-managed hooks)                         |
+| `dotnet-gitmoji commit`                  | Interactive commit (client mode)                                                                     |
+| `dotnet-gitmoji config`                  | Run the configuration wizard (saves to repo config by default; use `--global` for personal settings) |
+| `dotnet-gitmoji list`                    | List all available gitmojis                                                                          |
+| `dotnet-gitmoji search <keyword>`        | Fuzzy-search gitmojis by name, code, or description                                                  |
+| `dotnet-gitmoji update`                  | Refresh the cached gitmoji list from the remote API                                                  |
 
 When installed locally, prefix every command with `dotnet tool run`:
 
