@@ -52,7 +52,8 @@ public class ConfigurationServiceTests
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
         var configJson = """{ "MessagePrompt": false, "CapitalizeTitle": false }""";
-        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson);
+        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
+            TestContext.Current.CancellationToken);
 
         try
         {
@@ -76,7 +77,8 @@ public class ConfigurationServiceTests
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
-        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), "NOT JSON {{{");
+        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), "NOT JSON {{{",
+            TestContext.Current.CancellationToken);
 
         try
         {
@@ -133,7 +135,7 @@ public class ConfigurationServiceTests
 
         var configPath = Path.Combine(tempDir, ".gitmojirc.json");
         var originalContent = """{ "CapitalizeTitle": false }""";
-        await File.WriteAllTextAsync(configPath, originalContent);
+        await File.WriteAllTextAsync(configPath, originalContent, TestContext.Current.CancellationToken);
 
         try
         {
@@ -141,7 +143,8 @@ public class ConfigurationServiceTests
             var createdPath = await service.CreateRepoConfigAsync();
 
             Assert.Null(createdPath);
-            Assert.Equal(originalContent, await File.ReadAllTextAsync(configPath));
+            Assert.Equal(originalContent,
+                await File.ReadAllTextAsync(configPath, TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -158,7 +161,8 @@ public class ConfigurationServiceTests
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
         var configJson = """{ "GitmojisUrl": "http://insecure.example.com/gitmojis" }""";
-        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson);
+        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
+            TestContext.Current.CancellationToken);
 
         try
         {

@@ -23,7 +23,7 @@ public class CommitMessageServiceTests
 
         try
         {
-            await File.WriteAllTextAsync(filePath, "first line\nsecond line");
+            await File.WriteAllTextAsync(filePath, "first line\nsecond line", TestContext.Current.CancellationToken);
 
             var result = await _service.ReadMessageAsync(filePath);
 
@@ -45,7 +45,8 @@ public class CommitMessageServiceTests
 
         try
         {
-            await File.WriteAllTextAsync(filePath, "# This is a comment\n# Another comment\nActual message\n");
+            await File.WriteAllTextAsync(filePath, "# This is a comment\n# Another comment\nActual message\n",
+                TestContext.Current.CancellationToken);
 
             var result = await _service.ReadMessageAsync(filePath);
 
@@ -67,7 +68,8 @@ public class CommitMessageServiceTests
 
         try
         {
-            await File.WriteAllTextAsync(filePath, "# comment only\n# another comment\n");
+            await File.WriteAllTextAsync(filePath, "# comment only\n# another comment\n",
+                TestContext.Current.CancellationToken);
 
             var result = await _service.ReadMessageAsync(filePath);
 

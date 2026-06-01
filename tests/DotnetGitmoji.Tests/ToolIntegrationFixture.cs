@@ -11,7 +11,7 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
     public string RepositoryRoot { get; private set; } = string.Empty;
     public string ToolPathDirectory { get; private set; } = string.Empty;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         RepositoryRoot = FindRepositoryRoot();
 
@@ -57,12 +57,12 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
                 $"STDERR:{Environment.NewLine}{installResult.StandardError}");
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         if (!string.IsNullOrWhiteSpace(_workDirectory) && Directory.Exists(_workDirectory))
             Directory.Delete(_workDirectory, true);
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public Task<ProcessResult> RunToolAsync(string workingDirectory, params string[] arguments)
