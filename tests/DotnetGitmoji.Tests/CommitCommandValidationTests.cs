@@ -37,13 +37,27 @@ public class CommitCommandValidationTests
     [Fact]
     public async Task ExecuteAsync_WhenTitleExceedsMaxLength_ThrowsCommandException()
     {
-        var longTitle = new string('a', PromptService.MaxTitleLength + 1);
+        var longTitle = new string('a', ToolConfiguration.DefaultMaxTitleLength + 1);
         var command = CreateCommand(longTitle);
         var console = new FakeInMemoryConsole();
 
         var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("maximum length", ex.Message);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenLimitDisabled_DoesNotRejectLongTitleArg()
+    {
+        _configService.LoadAsync().Returns(new ToolConfiguration { MaxTitleLength = null });
+        var longTitle = new string('a', ToolConfiguration.DefaultMaxTitleLength + 20);
+        var command = CreateCommand(longTitle);
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Record.ExceptionAsync(() => command.ExecuteAsync(console).AsTask());
+
+        if (ex is CommandException commandException)
+            Assert.DoesNotContain("maximum length", commandException.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -76,14 +90,14 @@ public class CommitCommandValidationTests
         _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
-        _promptService.AskTitle(Arg.Any<string?>()).Returns((string?)null);
+        _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
 
         var command = CreateCommand(); // No title arg
         var console = new FakeInMemoryConsole();
 
         await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
-        _promptService.Received().AskTitle(Arg.Any<string?>());
+        _promptService.Received().AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>());
     }
 
     [Fact]
@@ -91,7 +105,7 @@ public class CommitCommandValidationTests
     {
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
-        _promptService.AskTitle(Arg.Any<string?>()).Returns((string?)null);
+        _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
 
         var command = CreateCommand("fix something");
         var console = new FakeInMemoryConsole();
@@ -106,6 +120,6 @@ public class CommitCommandValidationTests
             /* git execution will fail */
         }
 
-        _promptService.DidNotReceive().AskTitle(Arg.Any<string?>());
+        _promptService.DidNotReceive().AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>());
     }
 }

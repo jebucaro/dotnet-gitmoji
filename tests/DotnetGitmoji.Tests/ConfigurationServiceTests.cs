@@ -14,6 +14,8 @@ public class ConfigurationServiceTests
         Assert.False(config.MessagePrompt);
         Assert.False(config.ScopePrompt);
         Assert.True(config.CapitalizeTitle);
+        Assert.Equal(ToolConfiguration.DefaultMaxTitleLength, config.MaxTitleLength);
+        Assert.True(config.TrimTitleWhenExceeded);
         Assert.False(config.AutoAdd);
         Assert.False(config.SignedCommit);
         Assert.Equal(EmojiFormat.Emoji, config.EmojiFormat);
@@ -115,6 +117,8 @@ public class ConfigurationServiceTests
             Assert.Equal(defaults.ScopePrompt, config.ScopePrompt);
             Assert.Equal(defaults.MessagePrompt, config.MessagePrompt);
             Assert.Equal(defaults.CapitalizeTitle, config.CapitalizeTitle);
+            Assert.Equal(defaults.MaxTitleLength, config.MaxTitleLength);
+            Assert.Equal(defaults.TrimTitleWhenExceeded, config.TrimTitleWhenExceeded);
             Assert.Equal(defaults.AutoAdd, config.AutoAdd);
             Assert.Equal(defaults.SignedCommit, config.SignedCommit);
             Assert.Equal(defaults.GitmojisUrl, config.GitmojisUrl);
@@ -170,6 +174,31 @@ public class ConfigurationServiceTests
             var config = await service.LoadAsync();
 
             Assert.Equal("https://gitmoji.dev/api/gitmojis", config.GitmojisUrl);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenConfigHasInvalidMaxTitleLength_FallsBackToDefault()
+    {
+        var gitService = Substitute.For<IGitService>();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        var configJson = """{ "MaxTitleLength": 0 }""";
+        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
+            TestContext.Current.CancellationToken);
+
+        try
+        {
+            var service = new ConfigurationService(gitService);
+            var config = await service.LoadAsync();
+
+            Assert.Equal(ToolConfiguration.DefaultMaxTitleLength, config.MaxTitleLength);
         }
         finally
         {
