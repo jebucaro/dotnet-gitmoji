@@ -87,11 +87,19 @@ public sealed partial class HookCommand : ICommand
             : null;
 
         var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
-        var rawTitle = _promptService.AskTitle(message);
+        var rawTitle = _promptService.AskTitle(config, message);
         if (string.IsNullOrWhiteSpace(rawTitle))
         {
             await console.Error.WriteLineAsync(
                 "⚠ dotnet-gitmoji: empty title, keeping original commit message.");
+            return;
+        }
+
+        var titleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
+        if (titleValidationError is not null)
+        {
+            await console.Error.WriteLineAsync(
+                $"⚠ dotnet-gitmoji: {titleValidationError} Keeping original commit message.");
             return;
         }
 

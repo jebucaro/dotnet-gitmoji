@@ -1,3 +1,4 @@
+using System.Globalization;
 using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
@@ -41,6 +42,28 @@ public sealed partial class ConfigCommand : ICommand
         var scopePrompt = AnsiConsole.Confirm("Prompt for scope?", config.ScopePrompt);
         var messagePrompt = AnsiConsole.Confirm("Prompt for commit message?", config.MessagePrompt);
         var capitalizeTitle = AnsiConsole.Confirm("Capitalize commit title?", config.CapitalizeTitle);
+
+        var maxTitleLengthPrompt = new TextPrompt<string>("Maximum commit title length (leave empty to disable):")
+            .AllowEmpty()
+            .Validate(input =>
+                string.IsNullOrWhiteSpace(input) ||
+                (int.TryParse(input, NumberStyles.None, CultureInfo.InvariantCulture, out var value) && value > 0)
+                    ? ValidationResult.Success()
+                    : ValidationResult.Error("[red]Must be a positive integer or empty[/]"));
+        if (config.MaxTitleLength is not null)
+            maxTitleLengthPrompt.DefaultValue(config.MaxTitleLength.Value.ToString(CultureInfo.InvariantCulture));
+
+        var maxTitleLengthInput = AnsiConsole.Prompt(maxTitleLengthPrompt);
+        int? maxTitleLength = string.IsNullOrWhiteSpace(maxTitleLengthInput)
+            ? null
+            : int.Parse(maxTitleLengthInput, NumberStyles.None, CultureInfo.InvariantCulture);
+
+        var trimTitleWhenExceeded = config.TrimTitleWhenExceeded;
+        if (maxTitleLength is not null)
+            trimTitleWhenExceeded = AnsiConsole.Confirm(
+                "Trim titles that exceed the maximum length? (interactive prompts only)",
+                config.TrimTitleWhenExceeded);
+
         var autoAdd = AnsiConsole.Confirm("Auto-add changes before commit? (client mode only)", config.AutoAdd);
         var signedCommit = AnsiConsole.Confirm("Sign commits with GPG? (client mode only)", config.SignedCommit);
         var enforceConvention = AnsiConsole.Confirm(
@@ -70,6 +93,8 @@ public sealed partial class ConfigCommand : ICommand
         config.ScopePrompt = scopePrompt;
         config.MessagePrompt = messagePrompt;
         config.CapitalizeTitle = capitalizeTitle;
+        config.MaxTitleLength = maxTitleLength;
+        config.TrimTitleWhenExceeded = trimTitleWhenExceeded;
         config.AutoAdd = autoAdd;
         config.SignedCommit = signedCommit;
         config.EnforceConvention = enforceConvention;

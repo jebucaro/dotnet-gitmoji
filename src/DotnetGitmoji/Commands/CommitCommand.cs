@@ -58,9 +58,12 @@ public sealed partial class CommitCommand : ICommand
         var config = await _configService.LoadAsync();
         var gitmojis = await _gitmojiProvider.GetAllAsync();
 
-        if (Title is not null && Title.Length > PromptService.MaxTitleLength)
-            throw new CommandException(
-                $"Title exceeds maximum length of {PromptService.MaxTitleLength} characters.");
+        if (Title is not null)
+        {
+            var titleValidationError = CommitTitlePolicy.ValidateExplicitTitle(Title, config);
+            if (titleValidationError is not null)
+                throw new CommandException(titleValidationError);
+        }
 
         if (Scope is not null)
         {
@@ -77,10 +80,14 @@ public sealed partial class CommitCommand : ICommand
 
         var selected = _promptService.SelectGitmoji(gitmojis);
         var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
-        var rawTitle = Title ?? _promptService.AskTitle();
+        var rawTitle = Title ?? _promptService.AskTitle(config);
 
         if (string.IsNullOrWhiteSpace(rawTitle))
             throw new CommandException("A commit title is required.");
+
+        var promptedTitleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
+        if (promptedTitleValidationError is not null)
+            throw new CommandException(promptedTitleValidationError);
 
         var title = config.CapitalizeTitle
             ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
