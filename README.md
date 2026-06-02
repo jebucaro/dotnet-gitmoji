@@ -200,6 +200,8 @@ Example file:
   "scopePrompt": false,
   "messagePrompt": false,
   "capitalizeTitle": true,
+  "maxTitleLength": 48,
+  "trimTitleWhenExceeded": true,
   "gitmojisUrl": "https://gitmoji.dev/api/gitmojis",
   "autoAdd": false,
   "signedCommit": false,
@@ -216,6 +218,8 @@ Example file:
 | `scopePrompt`       | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): ...`)                                                          |
 | `messagePrompt`     | `bool`                | `false`                            | Prompt for an optional commit message body                                                                  |
 | `capitalizeTitle`   | `bool`                | `true`                             | Automatically capitalize the first letter of the commit title                                               |
+| `maxTitleLength`    | `int` \| `null`       | `48`                               | Maximum allowed commit title length; set to `null` to disable length enforcement                           |
+| `trimTitleWhenExceeded` | `bool`            | `true`                             | In interactive prompts, automatically trim titles longer than `maxTitleLength` at a word boundary          |
 | `gitmojisUrl`       | `string`              | `https://gitmoji.dev/api/gitmojis` | URL to fetch the gitmoji list from                                                                          |
 | `autoAdd`           | `bool`                | `false`                            | Stage all changes before committing (client mode only)                                                      |
 | `signedCommit`      | `bool`                | `false`                            | Sign commits with GPG (client mode only)                                                                    |
