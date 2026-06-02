@@ -11,6 +11,6 @@ public interface IPromptService
 
     Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis);
     string? AskScope(IReadOnlyList<string>? predefinedScopes = null);
-    string? AskTitle(string? defaultValue = null);
+    string? AskTitle(ToolConfiguration config, string? defaultValue = null);
     string? AskMessage();
 }

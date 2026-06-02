@@ -7,7 +7,6 @@ namespace DotnetGitmoji.Services;
 public sealed partial class PromptService : IPromptService
 {
     public const int MaxScopeLength = 32;
-    public const int MaxTitleLength = 48;
     private const string NoneScopeOption = "(none)";
     private const int GitmojiPageSize = 15;
 
@@ -103,27 +102,41 @@ public sealed partial class PromptService : IPromptService
         return scope;
     }
 
-    public string? AskTitle(string? defaultValue = null)
+    public string? AskTitle(ToolConfiguration config, string? defaultValue = null)
     {
-        var prompt = new TextPrompt<string>("[grey]Enter commit title:[/]")
-            .AllowEmpty();
-        if (!string.IsNullOrEmpty(defaultValue))
-            prompt.DefaultValue(defaultValue);
+        ArgumentNullException.ThrowIfNull(config);
 
-        var title = _console.Prompt(prompt);
-
-        if (string.IsNullOrWhiteSpace(title))
-            return null;
-
-        if (title.Length > MaxTitleLength)
+        var defaultTitle = defaultValue;
+        while (true)
         {
-            var lastSpace = title.LastIndexOf(' ', MaxTitleLength - 1);
-            title = lastSpace > 0 ? title[..lastSpace] : title[..MaxTitleLength];
-            _console.MarkupLine(
-                $"[yellow]Warning: title truncated to {title.Length} characters (nearest word boundary).[/]");
-        }
+            var prompt = new TextPrompt<string>("[grey]Enter commit title:[/]")
+                .AllowEmpty();
+            if (!string.IsNullOrEmpty(defaultTitle))
+                prompt.DefaultValue(defaultTitle);
 
-        return title;
+            var title = _console.Prompt(prompt);
+
+            if (string.IsNullOrWhiteSpace(title))
+                return null;
+
+            var result = CommitTitlePolicy.ApplyPromptPolicy(title, config);
+            if (result.WasTrimmed)
+            {
+                _console.MarkupLine(
+                    $"[yellow]Warning: title truncated to {result.Title.Length} characters (nearest word boundary).[/]");
+                return result.Title;
+            }
+
+            if (result.ExceededLimit && result.MaxLength is not null)
+            {
+                _console.MarkupLine(
+                    $"[yellow]Warning: title exceeds configured maximum length of {result.MaxLength.Value} characters. Enter a shorter title or enable trimming.[/]");
+                defaultTitle = null;
+                continue;
+            }
+
+            return result.Title;
+        }
     }
 
     public string? AskMessage()
