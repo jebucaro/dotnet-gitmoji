@@ -104,12 +104,20 @@ public sealed class ConfigurationService : IConfigurationService
             await using var stream = File.OpenRead(path);
             var config = await JsonSerializer.DeserializeAsync<ToolConfiguration>(stream, ReadOptions)
                          ?? new ToolConfiguration();
+            var defaults = new ToolConfiguration();
+
+            if (config.MaxTitleLength is <= 0)
+            {
+                Console.Error.WriteLine(
+                    $"Warning: Invalid MaxTitleLength in config at {path}, using default.");
+                config.MaxTitleLength = defaults.MaxTitleLength;
+            }
 
             if (Uri.TryCreate(config.GitmojisUrl, UriKind.Absolute, out var uri)
                 && uri.Scheme == Uri.UriSchemeHttps) return config;
             Console.Error.WriteLine(
                 $"Warning: Invalid GitmojisUrl in config at {path}, using default.");
-            config.GitmojisUrl = new ToolConfiguration().GitmojisUrl;
+            config.GitmojisUrl = defaults.GitmojisUrl;
 
             return config;
         }
