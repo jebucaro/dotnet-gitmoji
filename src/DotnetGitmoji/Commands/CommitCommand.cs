@@ -3,6 +3,7 @@ using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
 using CliWrap;
+using CliWrap.Buffered;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
 
@@ -11,6 +12,11 @@ namespace DotnetGitmoji.Commands;
 [Command("commit")]
 public sealed partial class CommitCommand : ICommand
 {
+    private const string NoStagedChangesMessage =
+        "No staged changes found. Use 'git add' to stage changes or enable autoAdd in dotnet-gitmoji config.";
+    private const string NoStagedChangesAfterAutoAddMessage =
+        "No staged changes found after autoAdd. Ensure you have file changes to commit.";
+
     private readonly IGitmojiProvider _gitmojiProvider;
     private readonly IPromptService _promptService;
     private readonly IConfigurationService _configService;
@@ -76,7 +82,30 @@ public sealed partial class CommitCommand : ICommand
         }
 
         if (config.AutoAdd)
-            await _gitService.StageAllAsync();
+        {
+            try
+            {
+                await _gitService.StageAllAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new CommandException($"Failed to auto-stage changes: {ex.Message}", 1);
+            }
+        }
+
+        bool hasStagedChanges;
+        try
+        {
+            hasStagedChanges = await _gitService.HasStagedChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new CommandException($"Failed to check staged changes: {ex.Message}", 1);
+        }
+
+        if (!hasStagedChanges)
+            throw new CommandException(
+                config.AutoAdd ? NoStagedChangesAfterAutoAddMessage : NoStagedChangesMessage, 1);
 
         var selected = _promptService.SelectGitmoji(gitmojis);
         var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
@@ -111,10 +140,36 @@ public sealed partial class CommitCommand : ICommand
             args.Add(body);
         }
 
-        await Cli.Wrap("git")
-            .WithArguments(args)
-            .WithStandardOutputPipe(PipeTarget.ToStream(console.Output.BaseStream))
-            .WithStandardErrorPipe(PipeTarget.ToStream(console.Error.BaseStream))
-            .ExecuteAsync();
+        BufferedCommandResult result;
+        try
+        {
+            result = await Cli.Wrap("git")
+                .WithArguments(args)
+                .WithValidation(CommandResultValidation.None)
+                .ExecuteBufferedAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new CommandException($"Failed to execute 'git commit': {ex.Message}", 1);
+        }
+
+        if (result.ExitCode != 0)
+        {
+            var error = string.IsNullOrWhiteSpace(result.StandardError)
+                ? result.StandardOutput.Trim()
+                : result.StandardError.Trim();
+
+            throw new CommandException(
+                string.IsNullOrWhiteSpace(error)
+                    ? $"git commit failed with exit code {result.ExitCode}."
+                    : $"git commit failed with exit code {result.ExitCode}: {error}",
+                1);
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.StandardOutput))
+            await console.Output.WriteAsync(result.StandardOutput);
+        if (!string.IsNullOrWhiteSpace(result.StandardError))
+            await console.Error.WriteAsync(result.StandardError);
     }
+
 }

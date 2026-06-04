@@ -17,6 +17,7 @@ public class CommitCommandValidationTests
     public CommitCommandValidationTests()
     {
         _gitService.IsHookInstalledAsync().Returns(false);
+        _gitService.HasStagedChangesAsync().Returns(true);
         _promptService.IsInteractive.Returns(true);
         _configService.LoadAsync().Returns(new ToolConfiguration());
         _gitmojiProvider.GetAllAsync().Returns(new[]
@@ -50,14 +51,57 @@ public class CommitCommandValidationTests
     public async Task ExecuteAsync_WhenLimitDisabled_DoesNotRejectLongTitleArg()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { MaxTitleLength = null });
+        _gitService.HasStagedChangesAsync().Returns(false);
         var longTitle = new string('a', ToolConfiguration.DefaultMaxTitleLength + 20);
         var command = CreateCommand(longTitle);
         var console = new FakeInMemoryConsole();
 
-        var ex = await Record.ExceptionAsync(() => command.ExecuteAsync(console).AsTask());
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
-        if (ex is CommandException commandException)
-            Assert.DoesNotContain("maximum length", commandException.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenNoStagedChanges_ThrowsFriendlyCommandException()
+    {
+        _gitService.HasStagedChangesAsync().Returns(false);
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains("No staged changes found", ex.Message);
+        Assert.Contains("enable autoAdd", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenAutoAddEnabledAndNoStagedChanges_ThrowsAutoAddSpecificMessage()
+    {
+        _configService.LoadAsync().Returns(new ToolConfiguration { AutoAdd = true });
+        _gitService.HasStagedChangesAsync().Returns(false);
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains("after autoAdd", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("enable autoAdd", ex.Message, StringComparison.OrdinalIgnoreCase);
+        await _gitService.Received(1).StageAllAsync();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenAutoAddEnabledAndStageAllFails_ThrowsFriendlyCommandException()
+    {
+        _configService.LoadAsync().Returns(new ToolConfiguration { AutoAdd = true });
+        _gitService.StageAllAsync().Returns(Task.FromException(new InvalidOperationException("permission denied")));
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains("Failed to auto-stage changes", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("permission denied", ex.Message, StringComparison.OrdinalIgnoreCase);
+        await _gitService.DidNotReceive().HasStagedChangesAsync();
     }
 
     [Fact]
@@ -106,19 +150,12 @@ public class CommitCommandValidationTests
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
+        _gitService.HasStagedChangesAsync().Returns(false);
 
         var command = CreateCommand("fix something");
         var console = new FakeInMemoryConsole();
 
-        // The command will attempt to run git and fail; we only care about prompt interactions.
-        try
-        {
-            await command.ExecuteAsync(console);
-        }
-        catch
-        {
-            /* git execution will fail */
-        }
+        await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         _promptService.DidNotReceive().AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>());
     }

@@ -18,4 +18,5 @@ public interface IGitService
     Task<string?> FindHookFileAsync();
     Task RemoveHookDirectAsync();
     Task StageAllAsync();
+    Task<bool> HasStagedChangesAsync();
 }
