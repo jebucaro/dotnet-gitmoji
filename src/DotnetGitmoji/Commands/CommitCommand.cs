@@ -14,6 +14,7 @@ public sealed partial class CommitCommand : ICommand
 {
     private const string NoStagedChangesMessage =
         "No staged changes found. Use 'git add' to stage changes or enable autoAdd in dotnet-gitmoji config.";
+
     private const string NoStagedChangesAfterAutoAddMessage =
         "No staged changes found after autoAdd. Ensure you have file changes to commit.";
 
@@ -82,7 +83,6 @@ public sealed partial class CommitCommand : ICommand
         }
 
         if (config.AutoAdd)
-        {
             try
             {
                 await _gitService.StageAllAsync();
@@ -91,7 +91,6 @@ public sealed partial class CommitCommand : ICommand
             {
                 throw new CommandException($"Failed to auto-stage changes: {ex.Message}", 1);
             }
-        }
 
         bool hasStagedChanges;
         try
@@ -171,5 +170,4 @@ public sealed partial class CommitCommand : ICommand
         if (!string.IsNullOrWhiteSpace(result.StandardError))
             await console.Error.WriteAsync(result.StandardError);
     }
-
 }

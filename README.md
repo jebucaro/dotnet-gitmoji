@@ -212,19 +212,19 @@ Example file:
 
 ### Configuration reference
 
-| Key                 | Type                  | Default                            | Description                                                                                                 |
-|---------------------|-----------------------|------------------------------------|-------------------------------------------------------------------------------------------------------------|
-| `emojiFormat`       | `"Emoji"` \| `"Code"` | `"Emoji"`                          | Prefix with the emoji character (`🐛`) or its shortcode (`:bug:`)                                           |
-| `scopePrompt`       | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): ...`)                                                          |
-| `messagePrompt`     | `bool`                | `false`                            | Prompt for an optional commit message body                                                                  |
-| `capitalizeTitle`   | `bool`                | `true`                             | Automatically capitalize the first letter of the commit title                                               |
-| `maxTitleLength`    | `int` \| `null`       | `48`                               | Maximum allowed commit title length; set to `null` to disable length enforcement                           |
-| `trimTitleWhenExceeded` | `bool`            | `true`                             | In interactive prompts, automatically trim titles longer than `maxTitleLength` at a word boundary          |
-| `gitmojisUrl`       | `string`              | `https://gitmoji.dev/api/gitmojis` | URL to fetch the gitmoji list from                                                                          |
-| `autoAdd`           | `bool`                | `false`                            | Stage all changes before committing (client mode only)                                                      |
-| `signedCommit`      | `bool`                | `false`                            | Sign commits with GPG (client mode only)                                                                    |
-| `scopes`            | `string[]` \| `null`  | `null`                             | Predefined scope suggestions shown when `scopePrompt` is `true`                                             |
-| `enforceConvention` | `bool`                | `false`                            | Reject commits that don't start with a gitmoji when no interactive terminal is available (e.g. IDE commits) |
+| Key                     | Type                  | Default                            | Description                                                                                                 |
+|-------------------------|-----------------------|------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| `emojiFormat`           | `"Emoji"` \| `"Code"` | `"Emoji"`                          | Prefix with the emoji character (`🐛`) or its shortcode (`:bug:`)                                           |
+| `scopePrompt`           | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): ...`)                                                          |
+| `messagePrompt`         | `bool`                | `false`                            | Prompt for an optional commit message body                                                                  |
+| `capitalizeTitle`       | `bool`                | `true`                             | Automatically capitalize the first letter of the commit title                                               |
+| `maxTitleLength`        | `int` \| `null`       | `48`                               | Maximum allowed commit title length; set to `null` to disable length enforcement                            |
+| `trimTitleWhenExceeded` | `bool`                | `true`                             | In interactive prompts, automatically trim titles longer than `maxTitleLength` at a word boundary           |
+| `gitmojisUrl`           | `string`              | `https://gitmoji.dev/api/gitmojis` | URL to fetch the gitmoji list from                                                                          |
+| `autoAdd`               | `bool`                | `false`                            | Stage all changes before committing (client mode only)                                                      |
+| `signedCommit`          | `bool`                | `false`                            | Sign commits with GPG (client mode only)                                                                    |
+| `scopes`                | `string[]` \| `null`  | `null`                             | Predefined scope suggestions shown when `scopePrompt` is `true`                                             |
+| `enforceConvention`     | `bool`                | `false`                            | Reject commits that don't start with a gitmoji when no interactive terminal is available (e.g. IDE commits) |
 
 ### Config resolution order
 
