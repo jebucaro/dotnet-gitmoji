@@ -139,4 +139,60 @@ public class HookCommandTests
             File.Delete(tempFile);
         }
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenReadMessageFails_WarnsToStderrAndSkipsProcessing()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(Task.FromException<string>(new IOException("disk read error")));
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            Assert.Contains("could not read commit message file", console.ReadErrorString(),
+                StringComparison.OrdinalIgnoreCase);
+            await _commitMessageService.DidNotReceive().WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenWriteMessageFails_WarnsToStderrWithoutThrowing()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
+            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message without gitmoji");
+            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
+            _commitMessageService.WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>())
+                .Returns(Task.FromException(new IOException("disk write error")));
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            Assert.Contains("could not write commit message", console.ReadErrorString(),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
 }

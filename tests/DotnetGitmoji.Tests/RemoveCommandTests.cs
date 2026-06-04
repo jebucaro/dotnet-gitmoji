@@ -1,0 +1,75 @@
+using CliFx;
+using CliFx.Infrastructure;
+using DotnetGitmoji.Commands;
+using DotnetGitmoji.Models;
+using DotnetGitmoji.Services;
+using NSubstitute;
+
+namespace DotnetGitmoji.Tests;
+
+public class RemoveCommandTests
+{
+    private readonly IGitService _gitService = Substitute.For<IGitService>();
+
+    private RemoveCommand CreateCommand()
+    {
+        return new RemoveCommand(_gitService);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenNotInGitRepo_ThrowsFriendlyCommandException()
+    {
+        _gitService.FindHookFileAsync()
+            .Returns(Task.FromException<string?>(new InvalidOperationException("Not a git repository.")));
+
+        var command = CreateCommand();
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains("Not a git repository", ex.Message);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenNoHookFound_ThrowsCommandException()
+    {
+        _gitService.FindHookFileAsync().Returns((string?)null);
+
+        var command = CreateCommand();
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains("No dotnet-gitmoji hook found", ex.Message);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenHookIsInHuskyDirectory_ShowsGuidanceWithoutCallingRemoveDirect()
+    {
+        _gitService.FindHookFileAsync().Returns(".husky/prepare-commit-msg");
+        _gitService.DetectHuskyKindAsync().Returns(HuskyInstallKind.HuskyNetShell);
+
+        var command = CreateCommand();
+        var console = new FakeInMemoryConsole();
+
+        await command.ExecuteAsync(console);
+
+        await _gitService.DidNotReceive().RemoveHookDirectAsync();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenRemoveHookDirectFails_ThrowsFriendlyCommandException()
+    {
+        var hookPath = Path.Combine(".git", "hooks", "prepare-commit-msg");
+        _gitService.FindHookFileAsync().Returns(hookPath);
+        _gitService.RemoveHookDirectAsync()
+            .Returns(Task.FromException(new InvalidOperationException("Permission denied.")));
+
+        var command = CreateCommand();
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains("Permission denied", ex.Message);
+    }
+}

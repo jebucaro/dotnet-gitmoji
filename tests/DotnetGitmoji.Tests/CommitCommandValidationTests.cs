@@ -105,6 +105,20 @@ public class CommitCommandValidationTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenHasStagedChangesThrows_ThrowsFriendlyCommandException()
+    {
+        _gitService.HasStagedChangesAsync()
+            .Returns(Task.FromException<bool>(new InvalidOperationException("git not available")));
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains("Failed to check staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("git not available", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenScopeHasInvalidChars_ThrowsCommandException()
     {
         var command = CreateCommand("test", "scope@");
