@@ -110,17 +110,47 @@ public sealed class GitService : IGitService
     {
         var repoRoot = await GetRepositoryRootAsync();
         var hooksDir = Path.Combine(repoRoot, ".git", "hooks");
-        Directory.CreateDirectory(hooksDir);
+
+        try
+        {
+            Directory.CreateDirectory(hooksDir);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new InvalidOperationException($"Could not create hooks directory at '{hooksDir}': {ex.Message}");
+        }
 
         var hookPath = Path.Combine(hooksDir, PrepareCommitMessageHookName);
         var command = await BuildShellHookCommandAsync();
         var script = $"#!/bin/sh\nexec < /dev/tty\n{command}\n";
-        await File.WriteAllTextAsync(hookPath, script);
+
+        try
+        {
+            await File.WriteAllTextAsync(hookPath, script);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new InvalidOperationException($"Could not write hook file at '{hookPath}': {ex.Message}");
+        }
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            await Cli.Wrap("chmod")
+        {
+            var chmodResult = await Cli.Wrap("chmod")
                 .WithArguments(["+x", hookPath])
-                .ExecuteAsync();
+                .WithValidation(CommandResultValidation.None)
+                .ExecuteBufferedAsync();
+
+            if (chmodResult.ExitCode != 0)
+            {
+                var error = string.IsNullOrWhiteSpace(chmodResult.StandardError)
+                    ? chmodResult.StandardOutput.Trim()
+                    : chmodResult.StandardError.Trim();
+                throw new InvalidOperationException(
+                    string.IsNullOrWhiteSpace(error)
+                        ? $"chmod +x failed on '{hookPath}' (exit code {chmodResult.ExitCode})."
+                        : $"chmod +x failed on '{hookPath}': {error}");
+            }
+        }
     }
 
     public async Task<string?> FindHookFileAsync()
@@ -151,22 +181,62 @@ public sealed class GitService : IGitService
 
         if (!File.Exists(hookPath)) return;
 
-        var content = await File.ReadAllTextAsync(hookPath);
-        var lines = content.Split('\n').ToList();
-        var filtered = lines.Where(l => !l.Contains("dotnet-gitmoji", StringComparison.OrdinalIgnoreCase)).ToList();
+        try
+        {
+            var content = await File.ReadAllTextAsync(hookPath);
+            var lines = content.Split('\n').ToList();
+            var filtered = lines.Where(l => !l.Contains("dotnet-gitmoji", StringComparison.OrdinalIgnoreCase)).ToList();
 
-        // If only shebang or empty lines remain, delete the file
-        if (filtered.All(l => string.IsNullOrWhiteSpace(l) || l.StartsWith("#!")))
-            File.Delete(hookPath);
-        else
-            await File.WriteAllTextAsync(hookPath, string.Join('\n', filtered));
+            // If only shebang or empty lines remain, delete the file
+            if (filtered.All(l => string.IsNullOrWhiteSpace(l) || l.StartsWith("#!")))
+                File.Delete(hookPath);
+            else
+                await File.WriteAllTextAsync(hookPath, string.Join('\n', filtered));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new InvalidOperationException($"Could not modify hook file at '{hookPath}': {ex.Message}");
+        }
     }
 
     public async Task StageAllAsync()
     {
-        await Cli.Wrap("git")
+        var result = await Cli.Wrap("git")
             .WithArguments(["add", "."])
-            .ExecuteAsync();
+            .WithValidation(CommandResultValidation.None)
+            .ExecuteBufferedAsync();
+
+        if (result.ExitCode == 0)
+            return;
+
+        var error = string.IsNullOrWhiteSpace(result.StandardError)
+            ? result.StandardOutput.Trim()
+            : result.StandardError.Trim();
+
+        throw new InvalidOperationException(
+            string.IsNullOrWhiteSpace(error)
+                ? $"Failed to stage changes (exit code {result.ExitCode})."
+                : $"Failed to stage changes (exit code {result.ExitCode}): {error}");
+    }
+
+    public async Task<bool> HasStagedChangesAsync()
+    {
+        var result = await Cli.Wrap("git")
+            .WithArguments(["diff", "--cached", "--name-only"])
+            .WithValidation(CommandResultValidation.None)
+            .ExecuteBufferedAsync();
+
+        if (result.ExitCode == 0)
+            return !string.IsNullOrWhiteSpace(result.StandardOutput);
+
+        var error = string.IsNullOrWhiteSpace(result.StandardError)
+            ? result.StandardOutput.Trim()
+            : result.StandardError.Trim();
+
+        throw new InvalidOperationException(
+            string.IsNullOrWhiteSpace(error)
+                ? $"Failed to check staged changes (exit code {result.ExitCode})."
+                : $"Failed to check staged changes (exit code {result.ExitCode}): {error}");
     }
 
     private static async Task RunDotnetHuskyAddAsync(string repoRoot, string hookCommand)

@@ -44,7 +44,7 @@ public sealed class GitmojiProvider : IGitmojiProvider
         var fetched = await TryFetchFromApiAsync();
         if (fetched?.Gitmojis?.Length > 0)
         {
-            await SaveToCacheAsync(fetched);
+            await TrySaveToCacheAsync(fetched);
             return fetched.Gitmojis;
         }
 
@@ -56,7 +56,7 @@ public sealed class GitmojiProvider : IGitmojiProvider
         var fetched = await TryFetchFromApiAsync();
         if (fetched?.Gitmojis?.Length > 0)
         {
-            await SaveToCacheAsync(fetched);
+            await TrySaveToCacheAsync(fetched);
             return fetched.Gitmojis;
         }
 
@@ -76,11 +76,18 @@ public sealed class GitmojiProvider : IGitmojiProvider
         return response ?? new GitmojiResponse(Array.Empty<Gitmoji>());
     }
 
-    private async Task SaveToCacheAsync(GitmojiResponse response)
+    private async Task TrySaveToCacheAsync(GitmojiResponse response)
     {
-        Directory.CreateDirectory(_cacheDirectory);
-        await using var stream = File.Create(_cachePath);
-        await JsonSerializer.SerializeAsync(stream, response, JsonOptions);
+        try
+        {
+            Directory.CreateDirectory(_cacheDirectory);
+            await using var stream = File.Create(_cachePath);
+            await JsonSerializer.SerializeAsync(stream, response, JsonOptions);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Cache write failure is non-fatal; the embedded fallback remains available.
+        }
     }
 
     private async Task<GitmojiResponse?> TryFetchFromApiAsync()

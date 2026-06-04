@@ -28,7 +28,16 @@ public sealed partial class ConfigCommand : ICommand
     {
         if (Global && Local)
             throw new CommandException("Cannot specify both --global and --local.", 1);
-        var config = await _configurationService.LoadAsync();
+
+        ToolConfiguration config;
+        try
+        {
+            config = await _configurationService.LoadAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new CommandException($"Failed to load configuration: {ex.Message}", 1);
+        }
 
         var emojiFormat = AnsiConsole.Prompt(
             new SelectionPrompt<EmojiFormat>()
@@ -102,7 +111,15 @@ public sealed partial class ConfigCommand : ICommand
         config.Scopes = scopes;
 
         var target = Global ? ConfigSaveTarget.Global : Local ? ConfigSaveTarget.Local : ConfigSaveTarget.Auto;
-        await _configurationService.SaveAsync(config, target);
+        try
+        {
+            await _configurationService.SaveAsync(config, target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new CommandException($"Failed to save configuration: {ex.Message}", 1);
+        }
+
         await console.Output.WriteLineAsync("Configuration saved.");
     }
 }

@@ -52,7 +52,17 @@ public sealed partial class HookCommand : ICommand
         if (!File.Exists(CommitMessageFile))
             throw new CommandException($"Commit message file not found: {CommitMessageFile}");
 
-        var message = await _commitMessageService.ReadMessageAsync(CommitMessageFile);
+        string message;
+        try
+        {
+            message = await _commitMessageService.ReadMessageAsync(CommitMessageFile);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await console.Error.WriteLineAsync(
+                $"⚠ dotnet-gitmoji: could not read commit message file, skipping. ({ex.Message})");
+            return;
+        }
 
         var config = await _configService.LoadAsync();
         var gitmojis = await _gitmojiProvider.GetAllAsync();
@@ -115,6 +125,14 @@ public sealed partial class HookCommand : ICommand
                 newMessage = $"{newMessage}\n\n{body}";
         }
 
-        await _commitMessageService.WriteMessageAsync(CommitMessageFile, newMessage);
+        try
+        {
+            await _commitMessageService.WriteMessageAsync(CommitMessageFile, newMessage);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await console.Error.WriteLineAsync(
+                $"⚠ dotnet-gitmoji: could not write commit message, keeping original. ({ex.Message})");
+        }
     }
 }
