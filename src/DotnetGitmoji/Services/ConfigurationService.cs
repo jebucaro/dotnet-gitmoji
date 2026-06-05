@@ -78,7 +78,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (UnauthorizedAccessException)
         {
-            Console.Error.WriteLine(
+            await Console.Error.WriteLineAsync(
                 $"Error: Permission denied writing config to {savePath}. " +
                 "Check file/directory permissions.");
             throw;
@@ -108,14 +108,14 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (config.MaxTitleLength is <= 0)
             {
-                Console.Error.WriteLine(
+                await Console.Error.WriteLineAsync(
                     $"Warning: Invalid MaxTitleLength in config at {path}, using default.");
                 config.MaxTitleLength = defaults.MaxTitleLength;
             }
 
             if (Uri.TryCreate(config.GitmojisUrl, UriKind.Absolute, out var uri)
                 && uri.Scheme == Uri.UriSchemeHttps) return config;
-            Console.Error.WriteLine(
+            await Console.Error.WriteLineAsync(
                 $"Warning: Invalid GitmojisUrl in config at {path}, using default.");
             config.GitmojisUrl = defaults.GitmojisUrl;
 
@@ -123,7 +123,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (JsonException)
         {
-            Console.Error.WriteLine($"Warning: Could not parse config at {path}, using defaults.");
+            await Console.Error.WriteLineAsync($"Warning: Could not parse config at {path}, using defaults.");
             return new ToolConfiguration();
         }
     }
