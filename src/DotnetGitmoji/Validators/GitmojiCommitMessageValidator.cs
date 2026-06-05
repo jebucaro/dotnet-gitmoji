@@ -10,9 +10,9 @@ public sealed partial class GitmojiCommitMessageValidator : ICommitMessageValida
 
     public ValidationResult Validate(string message, IReadOnlyList<Gitmoji> gitmojis)
     {
-        foreach (var g in gitmojis)
-            if (message.StartsWith(g.Emoji, StringComparison.Ordinal))
-                return new ValidationResult(true, g, message[g.Emoji.Length..].TrimStart());
+        var emojiMatch = gitmojis.FirstOrDefault(g => message.StartsWith(g.Emoji, StringComparison.Ordinal));
+        if (emojiMatch is not null)
+            return new ValidationResult(true, emojiMatch, message[emojiMatch.Emoji.Length..].TrimStart());
 
         var shortcodeMatch = ShortcodePattern().Match(message);
         if (shortcodeMatch.Success)
