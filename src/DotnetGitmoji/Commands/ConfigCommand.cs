@@ -43,9 +43,7 @@ public sealed partial class ConfigCommand : ICommand
             new SelectionPrompt<EmojiFormat>()
                 .Title("Select emoji format:")
                 .PageSize(5)
-                .UseConverter(format => format == EmojiFormat.Emoji
-                    ? "Emoji (🐛)"
-                    : "Code (:​bug:)") // zero-width space breaks Spectre.Console :name: emoji pattern
+                .UseConverter(FormatEmojiChoice)
                 .AddChoices(EmojiFormat.Emoji, EmojiFormat.Code));
 
         var scopePrompt = await AnsiConsole.ConfirmAsync("Prompt for scope?", config.ScopePrompt);
@@ -54,11 +52,7 @@ public sealed partial class ConfigCommand : ICommand
 
         var maxTitleLengthPrompt = new TextPrompt<string>("Maximum commit title length (leave empty to disable):")
             .AllowEmpty()
-            .Validate(input =>
-                string.IsNullOrWhiteSpace(input) ||
-                (int.TryParse(input, NumberStyles.None, CultureInfo.InvariantCulture, out var value) && value > 0)
-                    ? ValidationResult.Success()
-                    : ValidationResult.Error("[red]Must be a positive integer or empty[/]"));
+            .Validate(ValidateMaxTitleLengthInput);
         if (config.MaxTitleLength is not null)
             maxTitleLengthPrompt.DefaultValue(config.MaxTitleLength.Value.ToString(CultureInfo.InvariantCulture));
 
@@ -84,10 +78,7 @@ public sealed partial class ConfigCommand : ICommand
         var gitmojisUrl = await AnsiConsole.PromptAsync(
             new TextPrompt<string>("Gitmojis API URL:")
                 .DefaultValue(config.GitmojisUrl)
-                .Validate(url =>
-                    Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
-                        ? ValidationResult.Success()
-                        : ValidationResult.Error("[red]Must be a valid HTTPS URL[/]")));
+                .Validate(ValidateGitmojisUrl));
 
         var scopesDefault = config.Scopes is { Length: > 0 }
             ? string.Join(", ", config.Scopes)
@@ -130,5 +121,26 @@ public sealed partial class ConfigCommand : ICommand
         if (Global) return ConfigSaveTarget.Global;
         if (Local) return ConfigSaveTarget.Local;
         return ConfigSaveTarget.Auto;
+    }
+
+    private static string FormatEmojiChoice(EmojiFormat format)
+    {
+        return format == EmojiFormat.Emoji ? "Emoji (🐛)" : "Code (:​bug:)";
+        // zero-width space breaks Spectre.Console :name: emoji pattern
+    }
+
+    private static ValidationResult ValidateMaxTitleLengthInput(string input)
+    {
+        return string.IsNullOrWhiteSpace(input) ||
+               (int.TryParse(input, NumberStyles.None, CultureInfo.InvariantCulture, out var value) && value > 0)
+            ? ValidationResult.Success()
+            : ValidationResult.Error("[red]Must be a positive integer or empty[/]");
+    }
+
+    private static ValidationResult ValidateGitmojisUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
+            ? ValidationResult.Success()
+            : ValidationResult.Error("[red]Must be a valid HTTPS URL[/]");
     }
 }

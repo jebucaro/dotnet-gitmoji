@@ -210,12 +210,12 @@ public sealed partial class PromptService : IPromptService
         {
             case FuzzySelectorInputActionKind.MoveUp:
                 if (rankedItems.Count > 0)
-                    selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : rankedItems.Count - 1;
+                    selectedIndex = WrapDecrementIndex(selectedIndex, rankedItems.Count);
                 break;
 
             case FuzzySelectorInputActionKind.MoveDown:
                 if (rankedItems.Count > 0)
-                    selectedIndex = selectedIndex < rankedItems.Count - 1 ? selectedIndex + 1 : 0;
+                    selectedIndex = WrapIncrementIndex(selectedIndex, rankedItems.Count);
                 break;
 
             case FuzzySelectorInputActionKind.Submit:
@@ -305,5 +305,15 @@ public sealed partial class PromptService : IPromptService
         var halfWindow = pageSize / 2;
         var start = Math.Max(0, selectedIndex - halfWindow);
         return Math.Min(start, Math.Max(0, itemCount - pageSize));
+    }
+
+    private static int WrapDecrementIndex(int index, int count)
+    {
+        return index > 0 ? index - 1 : count - 1;
+    }
+
+    private static int WrapIncrementIndex(int index, int count)
+    {
+        return index < count - 1 ? index + 1 : 0;
     }
 }
