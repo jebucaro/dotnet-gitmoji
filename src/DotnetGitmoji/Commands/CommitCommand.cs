@@ -35,6 +35,9 @@ public sealed partial class CommitCommand : ICommand
         _gitService = gitService;
     }
 
+    [GeneratedRegex(@"^[a-zA-Z0-9_\-]+$")]
+    private static partial Regex ScopePattern();
+
     [CommandOption("title", 't', Description = "Commit title")]
     public string? Title { get; set; }
 
@@ -74,7 +77,7 @@ public sealed partial class CommitCommand : ICommand
 
         if (Scope is not null)
         {
-            if (!Regex.IsMatch(Scope, @"^[a-zA-Z0-9_\-]+$"))
+            if (!ScopePattern().IsMatch(Scope))
                 throw new CommandException(
                     "Scope contains invalid characters. Only alphanumeric, underscore and hyphen are allowed.");
             if (Scope.Length > PromptService.MaxScopeLength)

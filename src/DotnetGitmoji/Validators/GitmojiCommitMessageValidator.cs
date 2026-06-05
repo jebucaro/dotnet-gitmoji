@@ -3,15 +3,18 @@ using DotnetGitmoji.Models;
 
 namespace DotnetGitmoji.Validators;
 
-public sealed class GitmojiCommitMessageValidator : ICommitMessageValidator
+public sealed partial class GitmojiCommitMessageValidator : ICommitMessageValidator
 {
+    [GeneratedRegex(@"^(:[a-z0-9_]+:)\s*")]
+    private static partial Regex ShortcodePattern();
+
     public ValidationResult Validate(string message, IReadOnlyList<Gitmoji> gitmojis)
     {
         foreach (var g in gitmojis)
             if (message.StartsWith(g.Emoji, StringComparison.Ordinal))
                 return new ValidationResult(true, g, message[g.Emoji.Length..].TrimStart());
 
-        var shortcodeMatch = Regex.Match(message, @"^(:[a-z0-9_]+:)\s*");
+        var shortcodeMatch = ShortcodePattern().Match(message);
         if (shortcodeMatch.Success)
         {
             var code = shortcodeMatch.Groups[1].Value;
