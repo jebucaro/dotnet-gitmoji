@@ -6,3 +6,7 @@ riderModule.iml
 .husky/.installed
 .husky/task-runner.json
 nupkg/
+.env
+.sonarqube/
+tests/**/coverage.opencover.xml
+tests/**/coverage/
