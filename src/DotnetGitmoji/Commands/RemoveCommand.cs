@@ -60,10 +60,6 @@ public sealed partial class RemoveCommand : ICommand
             await _gitService.RemoveHookDirectAsync();
             AnsiConsole.MarkupLine("[green]✓[/] [grey]prepare-commit-msg[/] hook removed successfully.");
         }
-        catch (CommandException)
-        {
-            throw;
-        }
         catch (InvalidOperationException ex)
         {
             throw new CommandException(ex.Message, 1);

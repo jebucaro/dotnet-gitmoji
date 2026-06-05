@@ -51,10 +51,6 @@ public sealed partial class InitCommand : ICommand
                     AnsiConsole.MarkupLine("[green]✓[/] [grey].gitmojirc.json[/] created with defaults.");
             }
         }
-        catch (CommandException)
-        {
-            throw;
-        }
         catch (InvalidOperationException ex)
         {
             throw new CommandException(ex.Message, 1);
