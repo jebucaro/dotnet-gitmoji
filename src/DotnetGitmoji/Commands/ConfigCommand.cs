@@ -112,7 +112,7 @@ public sealed partial class ConfigCommand : ICommand
         config.GitmojisUrl = gitmojisUrl;
         config.Scopes = scopes;
 
-        var target = Global ? ConfigSaveTarget.Global : Local ? ConfigSaveTarget.Local : ConfigSaveTarget.Auto;
+        var target = DetermineTarget();
         try
         {
             await _configurationService.SaveAsync(config, target);
@@ -123,5 +123,12 @@ public sealed partial class ConfigCommand : ICommand
         }
 
         await console.Output.WriteLineAsync("Configuration saved.");
+    }
+
+    private ConfigSaveTarget DetermineTarget()
+    {
+        if (Global) return ConfigSaveTarget.Global;
+        if (Local) return ConfigSaveTarget.Local;
+        return ConfigSaveTarget.Auto;
     }
 }

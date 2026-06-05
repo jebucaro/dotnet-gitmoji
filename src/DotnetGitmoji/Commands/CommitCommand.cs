@@ -68,6 +68,39 @@ public sealed partial class CommitCommand : ICommand
         var config = await _configService.LoadAsync();
         var gitmojis = await _gitmojiProvider.GetAllAsync();
 
+        ValidateCommandOptions(config);
+        await EnsureStagedChangesAsync(config);
+
+        var selected = _promptService.SelectGitmoji(gitmojis);
+        var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
+        var rawTitle = Title ?? _promptService.AskTitle(config);
+
+        if (string.IsNullOrWhiteSpace(rawTitle))
+            throw new CommandException("A commit title is required.");
+
+        var promptedTitleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
+        if (promptedTitleValidationError is not null)
+            throw new CommandException(promptedTitleValidationError);
+
+        var title = config.CapitalizeTitle
+            ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
+            : rawTitle;
+
+        var prefix = config.EmojiFormat == EmojiFormat.Emoji
+            ? selected.Emoji
+            : selected.Code;
+        var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
+        var commitMessage = $"{prefix} {scopePart}{title}";
+
+        var body = Message;
+        if (body is null && config.MessagePrompt)
+            body = _promptService.AskMessage();
+
+        await ExecuteCommitAsync(console, BuildGitArgs(commitMessage, body, config));
+    }
+
+    private void ValidateCommandOptions(ToolConfiguration config)
+    {
         if (Title is not null)
         {
             var titleValidationError = CommitTitlePolicy.ValidateExplicitTitle(Title, config);
@@ -84,7 +117,10 @@ public sealed partial class CommitCommand : ICommand
                 throw new CommandException(
                     $"Scope exceeds maximum length of {PromptService.MaxScopeLength} characters.");
         }
+    }
 
+    private async Task EnsureStagedChangesAsync(ToolConfiguration config)
+    {
         if (config.AutoAdd)
             try
             {
@@ -108,30 +144,10 @@ public sealed partial class CommitCommand : ICommand
         if (!hasStagedChanges)
             throw new CommandException(
                 config.AutoAdd ? NoStagedChangesAfterAutoAddMessage : NoStagedChangesMessage, 1);
+    }
 
-        var selected = _promptService.SelectGitmoji(gitmojis);
-        var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
-        var rawTitle = Title ?? _promptService.AskTitle(config);
-
-        if (string.IsNullOrWhiteSpace(rawTitle))
-            throw new CommandException("A commit title is required.");
-
-        var promptedTitleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
-        if (promptedTitleValidationError is not null)
-            throw new CommandException(promptedTitleValidationError);
-
-        var title = config.CapitalizeTitle
-            ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
-            : rawTitle;
-
-        var prefix = config.EmojiFormat == EmojiFormat.Emoji
-            ? selected.Emoji
-            : selected.Code;
-        var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
-        var commitMessage = $"{prefix} {scopePart}{title}";
-
-        var body = Message ?? (config.MessagePrompt ? _promptService.AskMessage() : null);
-
+    private static List<string> BuildGitArgs(string commitMessage, string? body, ToolConfiguration config)
+    {
         var args = new List<string> { "commit" };
         if (config.SignedCommit)
             args.Add("-S");
@@ -142,6 +158,11 @@ public sealed partial class CommitCommand : ICommand
             args.Add(body);
         }
 
+        return args;
+    }
+
+    private static async Task ExecuteCommitAsync(IConsole console, List<string> args)
+    {
         BufferedCommandResult result;
         try
         {

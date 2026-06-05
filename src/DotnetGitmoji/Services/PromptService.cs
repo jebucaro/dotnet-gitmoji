@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using DotnetGitmoji.Models;
 using Spectre.Console;
@@ -173,7 +174,7 @@ public sealed partial class PromptService : IPromptService
         string searchPlaceholder,
         int pageSize,
         Func<T, string> renderItem,
-        Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems)
+        Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems) where T : class
     {
         if (items.Count == 0)
             throw new InvalidOperationException("Cannot show an empty selection prompt.");
@@ -192,47 +193,65 @@ public sealed partial class PromptService : IPromptService
             RenderFuzzySelection(title, searchPlaceholder, query, rankedItems, selectedIndex, pageSize, renderItem);
 
             var keyAction = FuzzySelectorInputRouter.Route(Console.ReadKey(true));
-            switch (keyAction.Kind)
-            {
-                case FuzzySelectorInputActionKind.MoveUp:
-                    if (rankedItems.Count > 0)
-                        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : rankedItems.Count - 1;
-                    break;
-
-                case FuzzySelectorInputActionKind.MoveDown:
-                    if (rankedItems.Count > 0)
-                        selectedIndex = selectedIndex < rankedItems.Count - 1 ? selectedIndex + 1 : 0;
-                    break;
-
-                case FuzzySelectorInputActionKind.Submit:
-                    if (rankedItems.Count > 0)
-                        return rankedItems[selectedIndex];
-                    break;
-
-                case FuzzySelectorInputActionKind.DeleteCharacter:
-                    if (query.Length > 0)
-                    {
-                        query = query[..^1];
-                        selectedIndex = 0;
-                    }
-
-                    break;
-
-                case FuzzySelectorInputActionKind.ClearQuery:
-                    if (query.Length > 0)
-                    {
-                        query = string.Empty;
-                        selectedIndex = 0;
-                    }
-
-                    break;
-
-                case FuzzySelectorInputActionKind.AppendCharacter:
-                    query += keyAction.Character;
-                    selectedIndex = 0;
-                    break;
-            }
+            if (TryApplyKeyAction(keyAction, rankedItems, ref query, ref selectedIndex, out var result))
+                return result;
         }
+    }
+
+    private static bool TryApplyKeyAction<T>(
+        FuzzySelectorInputAction action,
+        IReadOnlyList<T> rankedItems,
+        ref string query,
+        ref int selectedIndex,
+        [NotNullWhen(true)] out T? result) where T : class
+    {
+        result = default;
+        switch (action.Kind)
+        {
+            case FuzzySelectorInputActionKind.MoveUp:
+                if (rankedItems.Count > 0)
+                    selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : rankedItems.Count - 1;
+                break;
+
+            case FuzzySelectorInputActionKind.MoveDown:
+                if (rankedItems.Count > 0)
+                    selectedIndex = selectedIndex < rankedItems.Count - 1 ? selectedIndex + 1 : 0;
+                break;
+
+            case FuzzySelectorInputActionKind.Submit:
+                if (rankedItems.Count > 0)
+                {
+                    result = rankedItems[selectedIndex];
+                    return true;
+                }
+
+                break;
+
+            case FuzzySelectorInputActionKind.DeleteCharacter:
+                if (query.Length > 0)
+                {
+                    query = query[..^1];
+                    selectedIndex = 0;
+                }
+
+                break;
+
+            case FuzzySelectorInputActionKind.ClearQuery:
+                if (query.Length > 0)
+                {
+                    query = string.Empty;
+                    selectedIndex = 0;
+                }
+
+                break;
+
+            case FuzzySelectorInputActionKind.AppendCharacter:
+                query += action.Character;
+                selectedIndex = 0;
+                break;
+        }
+
+        return false;
     }
 
     private void RenderFuzzySelection<T>(

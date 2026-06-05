@@ -39,14 +39,7 @@ public sealed partial class HookCommand : ICommand
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        if (CommitSource is "merge" or "squash" or "commit")
-            return;
-
-        // Skip during an interactive rebase. Git doesn't pass a source argument in
-        // this case, but the rebase state directories are present inside .git/.
-        var gitDir = Path.GetDirectoryName(Path.GetFullPath(CommitMessageFile))!;
-        if (Directory.Exists(Path.Combine(gitDir, "rebase-merge")) ||
-            Directory.Exists(Path.Combine(gitDir, "rebase-apply")))
+        if (ShouldSkipCommit(CommitSource, CommitMessageFile))
             return;
 
         if (!File.Exists(CommitMessageFile))
@@ -68,10 +61,30 @@ public sealed partial class HookCommand : ICommand
         var gitmojis = await _gitmojiProvider.GetAllAsync();
 
         var result = _validator.Validate(message, gitmojis);
-
         if (result.IsValid)
             return;
 
+        await PrependGitmojiAsync(console, message, config, gitmojis);
+    }
+
+    // Skip during an interactive rebase. Git doesn't pass a source argument in
+    // this case, but the rebase state directories are present inside .git/.
+    private static bool ShouldSkipCommit(string? commitSource, string commitMessageFile)
+    {
+        if (commitSource is "merge" or "squash" or "commit")
+            return true;
+
+        var gitDir = Path.GetDirectoryName(Path.GetFullPath(commitMessageFile))!;
+        return Directory.Exists(Path.Combine(gitDir, "rebase-merge")) ||
+               Directory.Exists(Path.Combine(gitDir, "rebase-apply"));
+    }
+
+    private async Task PrependGitmojiAsync(
+        IConsole console,
+        string message,
+        ToolConfiguration config,
+        IReadOnlyList<Gitmoji> gitmojis)
+    {
         if (!_promptService.IsInteractive)
         {
             if (config.EnforceConvention)
@@ -98,6 +111,7 @@ public sealed partial class HookCommand : ICommand
 
         var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
         var rawTitle = _promptService.AskTitle(config, message);
+
         if (string.IsNullOrWhiteSpace(rawTitle))
         {
             await console.Error.WriteLineAsync(
