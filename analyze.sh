@@ -31,7 +31,6 @@ dotnet tool run dotnet-sonarscanner begin \
 
 dotnet build --no-incremental --disable-build-servers
 
-dotnet test --collect:"XPlat Code Coverage" \
-  -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+dotnet test --collect:"XPlat Code Coverage" --settings coverage.runsettings
 
 dotnet tool run dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
