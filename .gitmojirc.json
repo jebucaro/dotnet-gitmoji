@@ -3,6 +3,8 @@
   "scopePrompt": false,
   "messagePrompt": false,
   "capitalizeTitle": true,
+  "maxTitleLength": null,
+  "trimTitleWhenExceeded": false,
   "gitmojisUrl": "https://gitmoji.dev/api/gitmojis",
   "autoAdd": false,
   "signedCommit": true,
