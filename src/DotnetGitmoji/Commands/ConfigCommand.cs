@@ -50,11 +50,13 @@ public sealed partial class ConfigCommand : ICommand
         var messagePrompt = await AnsiConsole.ConfirmAsync("Prompt for commit message?", config.MessagePrompt);
         var capitalizeTitle = await AnsiConsole.ConfirmAsync("Capitalize commit title?", config.CapitalizeTitle);
 
-        var maxTitleLengthPrompt = new TextPrompt<string>("Maximum commit title length (leave empty to disable):")
-            .AllowEmpty()
-            .Validate(ValidateMaxTitleLengthInput);
-        if (config.MaxTitleLength is not null)
-            maxTitleLengthPrompt.DefaultValue(config.MaxTitleLength.Value.ToString(CultureInfo.InvariantCulture));
+        var currentHint = config.MaxTitleLength is not null
+            ? $"current: {config.MaxTitleLength.Value}, "
+            : string.Empty;
+        var maxTitleLengthPrompt =
+            new TextPrompt<string>($"Maximum commit title length ({currentHint}leave empty to disable):")
+                .AllowEmpty()
+                .Validate(ValidateMaxTitleLengthInput);
 
         var maxTitleLengthInput = await AnsiConsole.PromptAsync(maxTitleLengthPrompt);
         int? maxTitleLength = string.IsNullOrWhiteSpace(maxTitleLengthInput)
