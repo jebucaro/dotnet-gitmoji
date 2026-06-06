@@ -89,4 +89,52 @@ public class CommitMessageServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => _service.WriteMessageAsync(path, "new message"));
     }
+
+    [Fact]
+    public async Task WriteMessageAsync_WhenFileHasLines_ReplacesFirstLine()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        var gitDir = Path.Combine(tempRoot, ".git");
+        Directory.CreateDirectory(gitDir);
+        var filePath = Path.Combine(gitDir, "COMMIT_EDITMSG");
+
+        try
+        {
+            await File.WriteAllTextAsync(filePath, "old first line\n# comment\n",
+                TestContext.Current.CancellationToken);
+
+            await _service.WriteMessageAsync(filePath, "new message");
+
+            var lines = await File.ReadAllLinesAsync(filePath, TestContext.Current.CancellationToken);
+            Assert.Equal("new message", lines[0]);
+            Assert.Equal("# comment", lines[1]);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task WriteMessageAsync_WhenFileIsEmpty_WritesEntireMessage()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        var gitDir = Path.Combine(tempRoot, ".git");
+        Directory.CreateDirectory(gitDir);
+        var filePath = Path.Combine(gitDir, "COMMIT_EDITMSG");
+
+        try
+        {
+            await File.WriteAllTextAsync(filePath, string.Empty, TestContext.Current.CancellationToken);
+
+            await _service.WriteMessageAsync(filePath, "brand new message");
+
+            var content = await File.ReadAllTextAsync(filePath, TestContext.Current.CancellationToken);
+            Assert.Equal("brand new message", content);
+        }
+        finally
+        {
+            Directory.Delete(tempRoot, true);
+        }
+    }
 }

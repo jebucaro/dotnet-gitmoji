@@ -109,6 +109,82 @@ public class GitmojiProviderTests
         fuzzyMatcher.Received(1).RankGitmojis(Arg.Any<IReadOnlyList<Gitmoji>>(), "bug");
     }
 
+    [Fact]
+    public async Task ForceRefreshAsync_WhenApiReturns500_FallsBackToEmbeddedDefault()
+    {
+        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        var provider = CreateProvider(handler);
+
+        var result = await provider.ForceRefreshAsync();
+
+        Assert.NotNull(result);
+        Assert.True(result.Count > 0);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WhenValidCacheExists_ReturnsFromCacheWithoutCallingApi()
+    {
+        var cachePath = DotnetGitmojiPaths.GitmojiCachePath;
+        var hadCache = File.Exists(cachePath);
+        var backup = hadCache
+            ? await File.ReadAllBytesAsync(cachePath, TestContext.Current.CancellationToken)
+            : null;
+
+        try
+        {
+            var cacheGitmojis = Enumerable.Range(0, 50)
+                .Select(i => new Gitmoji($"🎨", "entity", $":art{i}:", $"desc{i}", $"art{i}", null))
+                .ToArray();
+            var cacheJson = JsonSerializer.Serialize(new GitmojiResponse(cacheGitmojis));
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await File.WriteAllTextAsync(cachePath, cacheJson, TestContext.Current.CancellationToken);
+
+            var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            var provider = CreateProvider(handler);
+
+            var result = await provider.GetAllAsync();
+
+            Assert.NotNull(result);
+            Assert.True(result.Count >= 50);
+            Assert.False(handler.WasCalled);
+        }
+        finally
+        {
+            if (backup is not null)
+                await File.WriteAllBytesAsync(cachePath, backup, TestContext.Current.CancellationToken);
+            else if (!hadCache && File.Exists(cachePath))
+                File.Delete(cachePath);
+        }
+    }
+
+    [Fact]
+    public async Task GetAllAsync_WhenCacheMissingAndApiUnavailable_ReturnsEmbeddedFallback()
+    {
+        var cachePath = DotnetGitmojiPaths.GitmojiCachePath;
+        var hadCache = File.Exists(cachePath);
+        var backup = hadCache
+            ? await File.ReadAllBytesAsync(cachePath, TestContext.Current.CancellationToken)
+            : null;
+
+        if (hadCache) File.Delete(cachePath);
+
+        try
+        {
+            var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK));
+            var provider = CreateProvider(handler, "http://not-https.example.com/gitmojis");
+
+            var result = await provider.GetAllAsync();
+
+            Assert.NotNull(result);
+            Assert.True(result.Count > 0);
+        }
+        finally
+        {
+            if (backup is not null)
+                await File.WriteAllBytesAsync(cachePath, backup, TestContext.Current.CancellationToken);
+        }
+    }
+
     private sealed class FakeHandler : HttpMessageHandler
     {
         private readonly HttpResponseMessage _response;

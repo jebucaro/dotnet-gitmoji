@@ -9,6 +9,9 @@ namespace DotnetGitmoji.Tests;
 
 public class RemoveCommandTests
 {
+    private const string NotInGitRepoFragment = "Not a git repository";
+    private const string NoHookFoundFragment = "No dotnet-gitmoji hook found";
+
     private readonly IGitService _gitService = Substitute.For<IGitService>();
 
     private RemoveCommand CreateCommand()
@@ -27,7 +30,7 @@ public class RemoveCommandTests
 
         var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
-        Assert.Contains("Not a git repository", ex.Message);
+        Assert.Contains(NotInGitRepoFragment, ex.Message);
     }
 
     [Fact]
@@ -40,7 +43,7 @@ public class RemoveCommandTests
 
         var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
-        Assert.Contains("No dotnet-gitmoji hook found", ex.Message);
+        Assert.Contains(NoHookFoundFragment, ex.Message);
     }
 
     [Fact]
@@ -71,5 +74,33 @@ public class RemoveCommandTests
         var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("Permission denied", ex.Message);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenHookIsInGitHooksDirectory_CallsRemoveHookDirect()
+    {
+        var hookPath = Path.Combine(".git", "hooks", "prepare-commit-msg");
+        _gitService.FindHookFileAsync().Returns(hookPath);
+
+        var command = CreateCommand();
+        var console = new FakeInMemoryConsole();
+
+        await command.ExecuteAsync(console);
+
+        await _gitService.Received(1).RemoveHookDirectAsync();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenHookIsInHuskyDirectoryAndJsHusky_ShowsGuidanceText()
+    {
+        _gitService.FindHookFileAsync().Returns(".husky/prepare-commit-msg");
+        _gitService.DetectHuskyKindAsync().Returns(HuskyInstallKind.JsHusky);
+
+        var command = CreateCommand();
+        var console = new FakeInMemoryConsole();
+
+        await command.ExecuteAsync(console);
+
+        await _gitService.DidNotReceive().RemoveHookDirectAsync();
     }
 }

@@ -125,13 +125,13 @@ public sealed partial class ConfigCommand : ICommand
         return ConfigSaveTarget.Auto;
     }
 
-    private static string FormatEmojiChoice(EmojiFormat format)
+    internal static string FormatEmojiChoice(EmojiFormat format)
     {
         return format == EmojiFormat.Emoji ? "Emoji (🐛)" : "Code (:\u200Bbug:)";
         // zero-width space breaks Spectre.Console :name: emoji pattern
     }
 
-    private static ValidationResult ValidateMaxTitleLengthInput(string input)
+    internal static ValidationResult ValidateMaxTitleLengthInput(string input)
     {
         return string.IsNullOrWhiteSpace(input) ||
                (int.TryParse(input, NumberStyles.None, CultureInfo.InvariantCulture, out var value) && value > 0)
@@ -139,7 +139,7 @@ public sealed partial class ConfigCommand : ICommand
             : ValidationResult.Error("[red]Must be a positive integer or empty[/]");
     }
 
-    private static ValidationResult ValidateGitmojisUrl(string url)
+    internal static ValidationResult ValidateGitmojisUrl(string url)
     {
         return Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
             ? ValidationResult.Success()

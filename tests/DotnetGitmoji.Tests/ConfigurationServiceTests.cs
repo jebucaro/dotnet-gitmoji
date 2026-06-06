@@ -205,4 +205,92 @@ public class ConfigurationServiceTests
             Directory.Delete(tempDir, true);
         }
     }
+
+    [Fact]
+    public async Task SaveAsync_WhenAutoTargetInGitRepo_SavesRepoFile()
+    {
+        var gitService = Substitute.For<IGitService>();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        try
+        {
+            var service = new ConfigurationService(gitService);
+            var config = new ToolConfiguration { CapitalizeTitle = false };
+
+            await service.SaveAsync(config, ConfigSaveTarget.Auto);
+
+            var savedPath = Path.Combine(tempDir, ".gitmojirc.json");
+            Assert.True(File.Exists(savedPath));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task SaveAsync_WhenAutoTargetAndGitServiceThrows_SavesGlobalConfig()
+    {
+        var gitService = Substitute.For<IGitService>();
+        gitService.GetRepositoryRootAsync()
+            .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
+
+        var globalPath = DotnetGitmojiPaths.GlobalConfigPath;
+        var hadGlobal = File.Exists(globalPath);
+        var backup = hadGlobal
+            ? await File.ReadAllBytesAsync(globalPath, TestContext.Current.CancellationToken)
+            : null;
+
+        try
+        {
+            var service = new ConfigurationService(gitService);
+            var config = new ToolConfiguration { CapitalizeTitle = false };
+
+            await service.SaveAsync(config, ConfigSaveTarget.Auto);
+
+            Assert.True(File.Exists(globalPath));
+        }
+        finally
+        {
+            if (backup is not null)
+                await File.WriteAllBytesAsync(globalPath, backup, TestContext.Current.CancellationToken);
+            else if (!hadGlobal && File.Exists(globalPath))
+                File.Delete(globalPath);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenGlobalConfigExistsAndNoRepoConfig_LoadsGlobalConfig()
+    {
+        var gitService = Substitute.For<IGitService>();
+        gitService.GetRepositoryRootAsync()
+            .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
+
+        var globalPath = DotnetGitmojiPaths.GlobalConfigPath;
+        var hadGlobal = File.Exists(globalPath);
+        var backup = hadGlobal
+            ? await File.ReadAllBytesAsync(globalPath, TestContext.Current.CancellationToken)
+            : null;
+
+        try
+        {
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            var globalConfig = """{ "CapitalizeTitle": false }""";
+            await File.WriteAllTextAsync(globalPath, globalConfig, TestContext.Current.CancellationToken);
+
+            var service = new ConfigurationService(gitService);
+            var config = await service.LoadAsync();
+
+            Assert.False(config.CapitalizeTitle);
+        }
+        finally
+        {
+            if (backup is not null)
+                await File.WriteAllBytesAsync(globalPath, backup, TestContext.Current.CancellationToken);
+            else if (File.Exists(globalPath))
+                File.Delete(globalPath);
+        }
+    }
 }

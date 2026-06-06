@@ -35,10 +35,18 @@ public class FuzzySelectorInputRouterTests
     public void Route_WhenBackspaceAndEscapePressed_UsesEditActions()
     {
         var backspaceAction = Route(new ConsoleKeyInfo('\b', ConsoleKey.Backspace, false, false, false));
-        var escapeAction = Route(new ConsoleKeyInfo('\u001b', ConsoleKey.Escape, false, false, false));
+        var escapeAction = Route(new ConsoleKeyInfo('', ConsoleKey.Escape, false, false, false));
 
         Assert.Equal("DeleteCharacter", backspaceAction.Kind);
         Assert.Equal("ClearQuery", escapeAction.Kind);
+    }
+
+    [Fact]
+    public void Route_WhenControlCharacterPressed_ReturnsNoneAction()
+    {
+        var f1Action = Route(new ConsoleKeyInfo('\0', ConsoleKey.F1, false, false, false));
+
+        Assert.Equal("None", f1Action.Kind);
     }
 
     private static (string Kind, char Character) Route(ConsoleKeyInfo keyInfo)

@@ -66,4 +66,40 @@ public class GitmojiFuzzyMatcherTests
 
         Assert.Empty(result);
     }
+
+    [Fact]
+    public void RankGitmojis_WhenQueryIsSubsequenceOfDescription_ReturnsMatch()
+    {
+        var matcher = new GitmojiFuzzyMatcher();
+
+        // "fxbg" is a subsequence of "Fix a bug." characters
+        var result = matcher.RankGitmojis(Gitmojis, "fxbg");
+
+        Assert.NotEmpty(result);
+        Assert.Equal(":bug:", result[0].Code);
+    }
+
+    [Fact]
+    public void RankGitmojis_WhenQueryContainsMultipleTokens_MatchesMultiwordDescription()
+    {
+        var matcher = new GitmojiFuzzyMatcher();
+
+        // Two-token query that matches "Improve structure"
+        var result = matcher.RankGitmojis(Gitmojis, "improve format");
+
+        Assert.NotEmpty(result);
+        Assert.Equal(":art:", result[0].Code);
+    }
+
+    [Fact]
+    public void RankScopes_WhenQueryMatchesScope_ReturnsScopeAboveThreshold()
+    {
+        var matcher = new GitmojiFuzzyMatcher();
+        var scopes = new[] { "authentication", "database", "api" };
+
+        var result = matcher.RankScopes(scopes, "auth");
+
+        Assert.NotEmpty(result);
+        Assert.Equal("authentication", result[0]);
+    }
 }

@@ -9,6 +9,9 @@ namespace DotnetGitmoji.Tests;
 
 public class CommitCommandValidationTests
 {
+    private const string HookInstalledFragment = "Cannot use client mode";
+    private const string NotInteractiveFragment = "Cannot run in client mode";
+
     private readonly IGitmojiProvider _gitmojiProvider = Substitute.For<IGitmojiProvider>();
     private readonly IPromptService _promptService = Substitute.For<IPromptService>();
     private readonly IConfigurationService _configService = Substitute.For<IConfigurationService>();
@@ -172,5 +175,61 @@ public class CommitCommandValidationTests
         await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         _promptService.DidNotReceive().AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenHookIsInstalled_ThrowsCommandException()
+    {
+        _gitService.IsHookInstalledAsync().Returns(true);
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains(HookInstalledFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenNotInteractive_ThrowsCommandException()
+    {
+        _promptService.IsInteractive.Returns(false);
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.Contains(NotInteractiveFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenEmojiFormatIsCode_ReachesGitCommitStep()
+    {
+        _configService.LoadAsync().Returns(new ToolConfiguration { EmojiFormat = EmojiFormat.Code });
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenCapitalizeTitleIsTrue_ReachesGitCommitStep()
+    {
+        _configService.LoadAsync().Returns(new ToolConfiguration { CapitalizeTitle = true });
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
