@@ -153,7 +153,7 @@ public sealed partial class PromptService : IPromptService
         return options;
     }
 
-    private IReadOnlyList<string> RankScopeOptions(IReadOnlyList<string> scopes, string query)
+    private List<string> RankScopeOptions(IReadOnlyList<string> scopes, string query)
     {
         if (string.IsNullOrWhiteSpace(query))
             return BuildScopeOptions(scopes);
