@@ -146,7 +146,7 @@ public sealed partial class PromptService : IPromptService
         return string.IsNullOrWhiteSpace(message) ? null : message;
     }
 
-    private static IReadOnlyList<string> BuildScopeOptions(IReadOnlyList<string> scopes)
+    private static List<string> BuildScopeOptions(IReadOnlyList<string> scopes)
     {
         var options = new List<string> { NoneScopeOption };
         options.AddRange(scopes);

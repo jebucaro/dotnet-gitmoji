@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace DotnetGitmoji.Services;
 
@@ -7,7 +8,7 @@ namespace DotnetGitmoji.Services;
 /// interactive prompts work even when stdin has been redirected (e.g. during git hooks).
 /// This mirrors gitmoji-cli's <c>exec &lt; /dev/tty</c> at the .NET level.
 /// </summary>
-internal static class TtyConsoleInput
+internal static partial class TtyConsoleInput
 {
     /// <summary>
     /// Replaces the native stdin handle with the terminal device.
@@ -27,6 +28,7 @@ internal static class TtyConsoleInput
         }
     }
 
+    [SupportedOSPlatform("windows")]
     private static bool TryReopenStdinWindows()
     {
         const uint GENERIC_READ = 0x80000000;
@@ -70,8 +72,9 @@ internal static class TtyConsoleInput
         return true;
     }
 
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern IntPtr CreateFileW(
+    [SupportedOSPlatform("windows")]
+    [LibraryImport("kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial IntPtr CreateFileW(
         string lpFileName,
         uint dwDesiredAccess,
         uint dwShareMode,
@@ -80,19 +83,19 @@ internal static class TtyConsoleInput
         uint dwFlagsAndAttributes,
         IntPtr hTemplateFile);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [SupportedOSPlatform("windows")]
+    [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetStdHandle(int nStdHandle, IntPtr hHandle);
+    private static partial bool SetStdHandle(int nStdHandle, IntPtr hHandle);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
+    [SupportedOSPlatform("windows")]
+    [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+    private static partial bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
 
-    [DllImport("libc", EntryPoint = "open")]
-    private static extern int Open(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string path,
-        int flags);
+    [LibraryImport("libc", EntryPoint = "open", StringMarshalling = StringMarshalling.Utf8)]
+    private static partial int Open(string path, int flags);
 
-    [DllImport("libc", EntryPoint = "dup2")]
-    private static extern int Dup2(int oldfd, int newfd);
+    [LibraryImport("libc", EntryPoint = "dup2")]
+    private static partial int Dup2(int oldfd, int newfd);
 }
