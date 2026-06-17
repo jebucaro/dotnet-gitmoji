@@ -50,24 +50,7 @@ public sealed partial class ConfigCommand : ICommand
         var messagePrompt = await AnsiConsole.ConfirmAsync("Prompt for commit message?", config.MessagePrompt);
         var capitalizeTitle = await AnsiConsole.ConfirmAsync("Capitalize commit title?", config.CapitalizeTitle);
 
-        var currentHint = config.MaxTitleLength is not null
-            ? $"current: {config.MaxTitleLength.Value}, "
-            : string.Empty;
-        var maxTitleLengthPrompt =
-            new TextPrompt<string>($"Maximum commit title length ({currentHint}leave empty to disable):")
-                .AllowEmpty()
-                .Validate(ValidateMaxTitleLengthInput);
-
-        var maxTitleLengthInput = await AnsiConsole.PromptAsync(maxTitleLengthPrompt);
-        int? maxTitleLength = string.IsNullOrWhiteSpace(maxTitleLengthInput)
-            ? null
-            : int.Parse(maxTitleLengthInput, NumberStyles.None, CultureInfo.InvariantCulture);
-
-        var trimTitleWhenExceeded = config.TrimTitleWhenExceeded;
-        if (maxTitleLength is not null)
-            trimTitleWhenExceeded = await AnsiConsole.ConfirmAsync(
-                "Trim titles that exceed the maximum length? (interactive prompts only)",
-                config.TrimTitleWhenExceeded);
+        var (maxTitleLength, trimTitleWhenExceeded) = await PromptMaxTitleLengthAsync(config);
 
         var autoAdd =
             await AnsiConsole.ConfirmAsync("Auto-add changes before commit? (client mode only)", config.AutoAdd);
@@ -82,34 +65,7 @@ public sealed partial class ConfigCommand : ICommand
                 .DefaultValue(config.GitmojisUrl)
                 .Validate(ValidateGitmojisUrl));
 
-        string[]? scopes;
-        if (config.Scopes is { Length: > 0 })
-        {
-            var keepScopes = await AnsiConsole.ConfirmAsync(
-                $"Keep existing predefined scopes ({string.Join(", ", config.Scopes)})?", true);
-            if (keepScopes)
-            {
-                scopes = config.Scopes;
-            }
-            else
-            {
-                var scopesInput = await AnsiConsole.PromptAsync(
-                    new TextPrompt<string>("Enter predefined scopes (comma-separated, leave empty to clear):")
-                        .AllowEmpty());
-                scopes = string.IsNullOrWhiteSpace(scopesInput)
-                    ? null
-                    : scopesInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            }
-        }
-        else
-        {
-            var scopesInput = await AnsiConsole.PromptAsync(
-                new TextPrompt<string>("Predefined scopes (comma-separated, leave empty to skip):")
-                    .AllowEmpty());
-            scopes = string.IsNullOrWhiteSpace(scopesInput)
-                ? null
-                : scopesInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        }
+        var scopes = await PromptScopesAsync(config);
 
         config.EmojiFormat = emojiFormat;
         config.ScopePrompt = scopePrompt;
@@ -141,6 +97,58 @@ public sealed partial class ConfigCommand : ICommand
         if (Global) return ConfigSaveTarget.Global;
         if (Local) return ConfigSaveTarget.Local;
         return ConfigSaveTarget.Auto;
+    }
+
+    private static async Task<(int? MaxTitleLength, bool TrimTitleWhenExceeded)> PromptMaxTitleLengthAsync(
+        ToolConfiguration config)
+    {
+        var hint = config.MaxTitleLength is not null
+            ? $"current: {config.MaxTitleLength.Value}, "
+            : string.Empty;
+        var input = await AnsiConsole.PromptAsync(
+            new TextPrompt<string>($"Maximum commit title length ({hint}leave empty to disable):")
+                .AllowEmpty()
+                .Validate(ValidateMaxTitleLengthInput));
+
+        int? maxTitleLength = string.IsNullOrWhiteSpace(input)
+            ? null
+            : int.Parse(input, NumberStyles.None, CultureInfo.InvariantCulture);
+
+        var trim = config.TrimTitleWhenExceeded;
+        if (maxTitleLength is not null)
+            trim = await AnsiConsole.ConfirmAsync(
+                "Trim titles that exceed the maximum length? (interactive prompts only)",
+                config.TrimTitleWhenExceeded);
+
+        return (maxTitleLength, trim);
+    }
+
+    private static async Task<string[]?> PromptScopesAsync(ToolConfiguration config)
+    {
+        if (config.Scopes is not { Length: > 0 })
+        {
+            var input = await AnsiConsole.PromptAsync(
+                new TextPrompt<string>("Predefined scopes (comma-separated, leave empty to skip):")
+                    .AllowEmpty());
+            return ParseScopes(input);
+        }
+
+        var keep = await AnsiConsole.ConfirmAsync(
+            $"Keep existing predefined scopes ({string.Join(", ", config.Scopes)})?", true);
+        if (keep)
+            return config.Scopes;
+
+        var scopesInput = await AnsiConsole.PromptAsync(
+            new TextPrompt<string>("Enter predefined scopes (comma-separated, leave empty to clear):")
+                .AllowEmpty());
+        return ParseScopes(scopesInput);
+    }
+
+    private static string[]? ParseScopes(string input)
+    {
+        return string.IsNullOrWhiteSpace(input)
+            ? null
+            : input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     internal static string FormatEmojiChoice(EmojiFormat format)
