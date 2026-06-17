@@ -82,16 +82,34 @@ public sealed partial class ConfigCommand : ICommand
                 .DefaultValue(config.GitmojisUrl)
                 .Validate(ValidateGitmojisUrl));
 
-        var scopesDefault = config.Scopes is { Length: > 0 }
-            ? string.Join(", ", config.Scopes)
-            : string.Empty;
-        var scopesInput = await AnsiConsole.PromptAsync(
-            new TextPrompt<string>("Predefined scopes (comma-separated, leave empty to clear):")
-                .AllowEmpty()
-                .DefaultValue(scopesDefault));
-        var scopes = string.IsNullOrWhiteSpace(scopesInput)
-            ? null
-            : scopesInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        string[]? scopes;
+        if (config.Scopes is { Length: > 0 })
+        {
+            var keepScopes = await AnsiConsole.ConfirmAsync(
+                $"Keep existing predefined scopes ({string.Join(", ", config.Scopes)})?", true);
+            if (keepScopes)
+            {
+                scopes = config.Scopes;
+            }
+            else
+            {
+                var scopesInput = await AnsiConsole.PromptAsync(
+                    new TextPrompt<string>("Enter predefined scopes (comma-separated, leave empty to clear):")
+                        .AllowEmpty());
+                scopes = string.IsNullOrWhiteSpace(scopesInput)
+                    ? null
+                    : scopesInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            }
+        }
+        else
+        {
+            var scopesInput = await AnsiConsole.PromptAsync(
+                new TextPrompt<string>("Predefined scopes (comma-separated, leave empty to skip):")
+                    .AllowEmpty());
+            scopes = string.IsNullOrWhiteSpace(scopesInput)
+                ? null
+                : scopesInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
 
         config.EmojiFormat = emojiFormat;
         config.ScopePrompt = scopePrompt;
