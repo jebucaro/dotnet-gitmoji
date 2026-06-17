@@ -92,7 +92,7 @@ public sealed partial class ConfigCommand : ICommand
         await console.Output.WriteLineAsync("Configuration saved.");
     }
 
-    private ConfigSaveTarget DetermineTarget()
+    internal ConfigSaveTarget DetermineTarget()
     {
         if (Global) return ConfigSaveTarget.Global;
         if (Local) return ConfigSaveTarget.Local;
@@ -144,7 +144,7 @@ public sealed partial class ConfigCommand : ICommand
         return ParseScopes(scopesInput);
     }
 
-    private static string[]? ParseScopes(string input)
+    internal static string[]? ParseScopes(string input)
     {
         return string.IsNullOrWhiteSpace(input)
             ? null

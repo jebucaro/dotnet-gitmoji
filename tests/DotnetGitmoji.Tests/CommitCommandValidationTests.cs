@@ -232,4 +232,53 @@ public class CommitCommandValidationTests
         Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenScopePromptIsTrue_PromptsForScope()
+    {
+        _configService.LoadAsync().Returns(new ToolConfiguration { ScopePrompt = true });
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+        _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
+        _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
+
+        var command = CreateCommand();
+        var console = new FakeInMemoryConsole();
+
+        await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        _promptService.Received(1).AskScope(Arg.Any<string[]?>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenMessagePromptIsTrue_PromptsForBody()
+    {
+        _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = true });
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+        _promptService.AskMessage().Returns("some body");
+
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        _promptService.Received(1).AskMessage();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenSignedCommitIsTrue_ReachesGitCommitStep()
+    {
+        _configService.LoadAsync().Returns(new ToolConfiguration { SignedCommit = true });
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+
+        var command = CreateCommand("fix something");
+        var console = new FakeInMemoryConsole();
+
+        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }

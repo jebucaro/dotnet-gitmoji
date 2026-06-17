@@ -471,4 +471,138 @@ public class HookCommandTests
             File.Delete(tempFile);
         }
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenValidMessageMissingScopeAndInteractive_AsksForScopeAndWritesMessage()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync()
+                .Returns(new ToolConfiguration { ScopePrompt = true, MessagePrompt = false });
+            _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent(":bug: fix issue", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(true, BugGitmoji, null, "fix issue", null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.AskScope(Arg.Any<string[]?>()).Returns("api");
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            _promptService.Received(1).AskScope(Arg.Any<string[]?>());
+            await _commitMessageService.Received(1).WriteMessageAsync(
+                Arg.Any<string>(),
+                Arg.Is<string>(s => s.Contains("(api)")),
+                Arg.Any<string?>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenValidMessageMissingBodyAndInteractive_AsksForBodyAndWritesMessage()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync()
+                .Returns(new ToolConfiguration { ScopePrompt = false, MessagePrompt = true });
+            _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent(":bug: fix issue", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(true, BugGitmoji, null, "fix issue", null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.AskMessage().Returns("some body text");
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            _promptService.Received(1).AskMessage();
+            await _commitMessageService.Received(1).WriteMessageAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Is<string?>(b => b == "some body text"));
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenValidMessageMissingScopeAndInteractive_EmbedsScopeInSubject()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync()
+                .Returns(new ToolConfiguration
+                    { ScopePrompt = true, MessagePrompt = false, EmojiFormat = EmojiFormat.Code });
+            _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent(":bug: fix issue", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(true, BugGitmoji, null, "fix issue", null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.AskScope(Arg.Any<string[]?>()).Returns("core");
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            await _commitMessageService.Received(1).WriteMessageAsync(
+                Arg.Any<string>(),
+                Arg.Is<string>(s => s.StartsWith(":bug:") && s.Contains("(core)")),
+                Arg.Any<string?>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenPrependPathAndScopePromptEnabled_EmbedsScopeInSubject()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync()
+                .Returns(new ToolConfiguration { ScopePrompt = true, MessagePrompt = false });
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message without gitmoji", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
+            _promptService.AskScope(Arg.Any<string[]?>()).Returns("ui");
+            _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix layout");
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            _promptService.Received(1).AskScope(Arg.Any<string[]?>());
+            await _commitMessageService.Received(1).WriteMessageAsync(
+                Arg.Any<string>(),
+                Arg.Is<string>(s => s.Contains("(ui)")),
+                Arg.Any<string?>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
 }

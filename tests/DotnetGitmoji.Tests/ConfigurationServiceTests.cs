@@ -262,6 +262,29 @@ public class ConfigurationServiceTests
     }
 
     [Fact]
+    public async Task SaveAsync_WhenLocalTarget_SavesRepoFile()
+    {
+        var gitService = Substitute.For<IGitService>();
+        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        try
+        {
+            var service = new ConfigurationService(gitService);
+            var config = new ToolConfiguration { CapitalizeTitle = false };
+
+            await service.SaveAsync(config, ConfigSaveTarget.Local);
+
+            Assert.True(File.Exists(Path.Combine(tempDir, ".gitmojirc.json")));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
     public async Task LoadAsync_WhenGlobalConfigExistsAndNoRepoConfig_LoadsGlobalConfig()
     {
         var gitService = Substitute.For<IGitService>();

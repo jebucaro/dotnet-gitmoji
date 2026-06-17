@@ -110,4 +110,51 @@ public class ConfigCommandTests
 
         Assert.Contains("Code", result);
     }
+
+    [Fact]
+    public void ParseScopes_WhenInputIsEmpty_ReturnsNull()
+    {
+        Assert.Null(ConfigCommand.ParseScopes(string.Empty));
+    }
+
+    [Fact]
+    public void ParseScopes_WhenInputIsWhitespace_ReturnsNull()
+    {
+        Assert.Null(ConfigCommand.ParseScopes("   "));
+    }
+
+    [Theory]
+    [InlineData("api,core", new[] { "api", "core" })]
+    [InlineData(" api , core , ui ", new[] { "api", "core", "ui" })]
+    [InlineData("single", new[] { "single" })]
+    public void ParseScopes_WhenCommaSeparated_ReturnsTrimmedArray(string input, string[] expected)
+    {
+        var result = ConfigCommand.ParseScopes(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void DetermineTarget_WhenGlobalTrue_ReturnsGlobal()
+    {
+        var command = CreateCommand(true);
+
+        Assert.Equal(Models.ConfigSaveTarget.Global, command.DetermineTarget());
+    }
+
+    [Fact]
+    public void DetermineTarget_WhenLocalTrue_ReturnsLocal()
+    {
+        var command = CreateCommand(local: true);
+
+        Assert.Equal(Models.ConfigSaveTarget.Local, command.DetermineTarget());
+    }
+
+    [Fact]
+    public void DetermineTarget_WhenNeither_ReturnsAuto()
+    {
+        var command = CreateCommand();
+
+        Assert.Equal(Models.ConfigSaveTarget.Auto, command.DetermineTarget());
+    }
 }
