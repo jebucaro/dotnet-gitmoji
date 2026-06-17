@@ -1,4 +1,5 @@
 using DotnetGitmoji.Models;
+using DotnetGitmoji.Services;
 using DotnetGitmoji.Validators;
 
 namespace DotnetGitmoji.Tests;
@@ -16,11 +17,11 @@ public class GitmojiCommitMessageValidatorTests
 
         var validator = new GitmojiCommitMessageValidator();
 
-        var result = validator.Validate("🎨  Improve structure", gitmojis);
+        var result = validator.Validate(new CommitMessageContent("🎨  Improve structure", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal(gitmojis[0], result.MatchedGitmoji);
-        Assert.Equal("Improve structure", result.RemainingMessage);
+        Assert.Equal("Improve structure", result.ParsedTitle);
     }
 
     [Fact]
@@ -33,11 +34,11 @@ public class GitmojiCommitMessageValidatorTests
 
         var validator = new GitmojiCommitMessageValidator();
 
-        var result = validator.Validate(":bug: Fix issue", gitmojis);
+        var result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal(gitmojis[0], result.MatchedGitmoji);
-        Assert.Equal("Fix issue", result.RemainingMessage);
+        Assert.Equal("Fix issue", result.ParsedTitle);
     }
 
     [Fact]
@@ -50,11 +51,11 @@ public class GitmojiCommitMessageValidatorTests
 
         var validator = new GitmojiCommitMessageValidator();
 
-        var result = validator.Validate("⚡️ Improve performance", gitmojis);
+        var result = validator.Validate(new CommitMessageContent("⚡️ Improve performance", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal(gitmojis[0], result.MatchedGitmoji);
-        Assert.Equal("Improve performance", result.RemainingMessage);
+        Assert.Equal("Improve performance", result.ParsedTitle);
     }
 
     [Fact]
@@ -67,11 +68,11 @@ public class GitmojiCommitMessageValidatorTests
 
         var validator = new GitmojiCommitMessageValidator();
 
-        var result = validator.Validate(":pencil2: Fix typo", gitmojis);
+        var result = validator.Validate(new CommitMessageContent(":pencil2: Fix typo", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal(gitmojis[0], result.MatchedGitmoji);
-        Assert.Equal("Fix typo", result.RemainingMessage);
+        Assert.Equal("Fix typo", result.ParsedTitle);
     }
 
     [Fact]
@@ -84,10 +85,93 @@ public class GitmojiCommitMessageValidatorTests
 
         var validator = new GitmojiCommitMessageValidator();
 
-        var result = validator.Validate("Fix issue", gitmojis);
+        var result = validator.Validate(new CommitMessageContent("Fix issue", null), gitmojis);
 
         Assert.False(result.IsValid);
         Assert.Null(result.MatchedGitmoji);
-        Assert.Equal("Fix issue", result.RemainingMessage);
+        Assert.Equal("Fix issue", result.ParsedTitle);
+    }
+
+    [Fact]
+    public void Validate_WhenShortcodeFollowedByScope_ExtractsScopeAndTitle()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(new CommitMessageContent(":bug: (auth): Fix issue", null), gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("auth", result.ParsedScope);
+        Assert.Equal("Fix issue", result.ParsedTitle);
+    }
+
+    [Fact]
+    public void Validate_WhenEmojiFollowedByScope_ExtractsScopeAndTitle()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(new CommitMessageContent("🐛 (api): Fix issue", null), gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("api", result.ParsedScope);
+        Assert.Equal("Fix issue", result.ParsedTitle);
+    }
+
+    [Fact]
+    public void Validate_WhenNoScope_ParsedScopeIsNull()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Null(result.ParsedScope);
+        Assert.Equal("Fix issue", result.ParsedTitle);
+    }
+
+    [Fact]
+    public void Validate_WhenBodyProvided_PassesThroughBody()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(new CommitMessageContent(":bug: Fix issue", "Some body"), gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("Some body", result.ParsedBody);
+    }
+
+    [Fact]
+    public void Validate_WhenBodyIsNull_ParsedBodyIsNull()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Null(result.ParsedBody);
     }
 }

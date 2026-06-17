@@ -12,12 +12,18 @@ public class HookCommandTests
 {
     private const string NoInteractiveTerminalFragment = "no interactive terminal";
     private const string DoesNotFollowConventionFragment = "does not follow the gitmoji convention";
+    private const string ScopeRequiredFragment = "scope is required";
+    private const string MessageBodyRequiredFragment = "message body is required";
+    private const string ScopeAndMessageBodyFragment = "scope and message body";
 
     private readonly ICommitMessageService _commitMessageService = Substitute.For<ICommitMessageService>();
     private readonly ICommitMessageValidator _validator = Substitute.For<ICommitMessageValidator>();
     private readonly IGitmojiProvider _gitmojiProvider = Substitute.For<IGitmojiProvider>();
     private readonly IPromptService _promptService = Substitute.For<IPromptService>();
     private readonly IConfigurationService _configService = Substitute.For<IConfigurationService>();
+
+    private static readonly Gitmoji ArtGitmoji = new("🎨", "entity", ":art:", "desc", "art", null);
+    private static readonly Gitmoji BugGitmoji = new("🐛", "entity", ":bug:", "desc", "bug", null);
 
     private HookCommand CreateCommand(string commitMessageFile, string? commitSource = null)
     {
@@ -60,13 +66,13 @@ public class HookCommandTests
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = true });
-            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
-            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message without gitmoji");
-            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new ValidationResult(false, null, null));
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message without gitmoji", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
             _promptService.AskMessage().Returns((string?)null);
 
@@ -90,13 +96,13 @@ public class HookCommandTests
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
-            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
-            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message without gitmoji");
-            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new ValidationResult(false, null, null));
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message without gitmoji", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
 
             var command = CreateCommand(tempFile);
@@ -120,13 +126,13 @@ public class HookCommandTests
         {
             _configService.LoadAsync().Returns(new ToolConfiguration
                 { MaxTitleLength = 10, TrimTitleWhenExceeded = false });
-            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
-            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message without gitmoji");
-            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new ValidationResult(false, null, null));
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message without gitmoji", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>())
                 .Returns(new string('a', 11));
 
@@ -135,7 +141,8 @@ public class HookCommandTests
 
             await command.ExecuteAsync(console);
 
-            await _commitMessageService.DidNotReceive().WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>());
+            await _commitMessageService.DidNotReceive()
+                .WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
         }
         finally
         {
@@ -150,7 +157,7 @@ public class HookCommandTests
         try
         {
             _commitMessageService.ReadMessageAsync(Arg.Any<string>())
-                .Returns(Task.FromException<string>(new IOException("disk read error")));
+                .Returns(Task.FromException<CommitMessageContent>(new IOException("disk read error")));
 
             var command = CreateCommand(tempFile);
             var console = new FakeInMemoryConsole();
@@ -159,7 +166,8 @@ public class HookCommandTests
 
             Assert.Contains("could not read commit message file", console.ReadErrorString(),
                 StringComparison.OrdinalIgnoreCase);
-            await _commitMessageService.DidNotReceive().WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>());
+            await _commitMessageService.DidNotReceive()
+                .WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
         }
         finally
         {
@@ -174,15 +182,15 @@ public class HookCommandTests
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
-            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
-            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message without gitmoji");
-            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new ValidationResult(false, null, null));
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message without gitmoji", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
-            _commitMessageService.WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>())
+            _commitMessageService.WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>())
                 .Returns(Task.FromException(new IOException("disk write error")));
 
             var command = CreateCommand(tempFile);
@@ -206,13 +214,13 @@ public class HookCommandTests
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false, ScopePrompt = true });
-            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
-            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message");
-            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new ValidationResult(false, null, null));
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
             _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
 
@@ -236,10 +244,11 @@ public class HookCommandTests
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { EnforceConvention = true });
-            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
-            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message");
-            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new ValidationResult(false, null, null));
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(false);
 
             var command = CreateCommand(tempFile);
@@ -262,10 +271,11 @@ public class HookCommandTests
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { EnforceConvention = false });
-            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
-            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message");
-            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new ValidationResult(false, null, null));
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(false);
 
             var command = CreateCommand(tempFile);
@@ -293,13 +303,13 @@ public class HookCommandTests
                 MessagePrompt = false,
                 EmojiFormat = EmojiFormat.Code
             });
-            _gitmojiProvider.GetAllAsync().Returns([new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)]);
-            _commitMessageService.ReadMessageAsync(Arg.Any<string>()).Returns("bad message");
-            _validator.Validate(Arg.Any<string>(), Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new ValidationResult(false, null, null));
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>())
-                .Returns(new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
 
             var command = CreateCommand(tempFile);
@@ -309,7 +319,152 @@ public class HookCommandTests
 
             await _commitMessageService.Received(1).WriteMessageAsync(
                 Arg.Any<string>(),
-                Arg.Is<string>(m => m.StartsWith(":art:")));
+                Arg.Is<string>(s => s.StartsWith(":art:")),
+                Arg.Any<string?>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenScopePromptEnabledAndMessageHasScope_PassesThrough()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync().Returns(new ToolConfiguration { ScopePrompt = true, MessagePrompt = false });
+            _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent(":bug: (api): Fix issue", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(true, BugGitmoji, "api", "Fix issue", null));
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            await _commitMessageService.DidNotReceive()
+                .WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenScopePromptEnabledAndScopeMissingAndNonInteractiveAndEnforceConvention_Rejects()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync()
+                .Returns(new ToolConfiguration { ScopePrompt = true, MessagePrompt = false, EnforceConvention = true });
+            _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent(":bug: Fix issue", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(true, BugGitmoji, null, "Fix issue", null));
+            _promptService.IsInteractive.Returns(false);
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+            Assert.Contains(ScopeRequiredFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenMessagePromptEnabledAndBodyMissingAndNonInteractiveAndEnforceConvention_Rejects()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync()
+                .Returns(new ToolConfiguration { MessagePrompt = true, ScopePrompt = false, EnforceConvention = true });
+            _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent(":bug: Fix issue", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(true, BugGitmoji, null, "Fix issue", null));
+            _promptService.IsInteractive.Returns(false);
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+            Assert.Contains(MessageBodyRequiredFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenBothPromptsEnabledAndBothMissingAndNonInteractiveAndEnforceConvention_Rejects()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync()
+                .Returns(new ToolConfiguration { ScopePrompt = true, MessagePrompt = true, EnforceConvention = true });
+            _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent(":bug: Fix issue", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(true, BugGitmoji, null, "Fix issue", null));
+            _promptService.IsInteractive.Returns(false);
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+            Assert.Contains(ScopeAndMessageBodyFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task
+        ExecuteAsync_WhenScopePromptEnabledAndScopeMissingAndNonInteractiveAndNoEnforceConvention_WarnsAndSkips()
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync()
+                .Returns(new ToolConfiguration
+                    { ScopePrompt = true, MessagePrompt = false, EnforceConvention = false });
+            _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent(":bug: Fix issue", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(true, BugGitmoji, null, "Fix issue", null));
+            _promptService.IsInteractive.Returns(false);
+
+            var command = CreateCommand(tempFile);
+            var console = new FakeInMemoryConsole();
+
+            await command.ExecuteAsync(console);
+
+            Assert.Contains(NoInteractiveTerminalFragment, console.ReadErrorString(),
+                StringComparison.OrdinalIgnoreCase);
+            await _commitMessageService.DidNotReceive()
+                .WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
         }
         finally
         {
