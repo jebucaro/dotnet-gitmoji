@@ -45,10 +45,10 @@ public sealed partial class HookCommand : ICommand
         if (!File.Exists(CommitMessageFile))
             throw new CommandException($"Commit message file not found: {CommitMessageFile}");
 
-        string message;
+        CommitMessageContent commitMessage;
         try
         {
-            message = await _commitMessageService.ReadMessageAsync(CommitMessageFile);
+            commitMessage = await _commitMessageService.ReadMessageAsync(CommitMessageFile);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -60,11 +60,21 @@ public sealed partial class HookCommand : ICommand
         var config = await _configService.LoadAsync();
         var gitmojis = await _gitmojiProvider.GetAllAsync();
 
-        var result = _validator.Validate(message, gitmojis);
-        if (result.IsValid)
-            return;
+        var result = _validator.Validate(commitMessage, gitmojis);
 
-        await PrependGitmojiAsync(console, message, config, gitmojis);
+        if (result.IsValid)
+        {
+            var missingScope = config.ScopePrompt && result.ParsedScope is null;
+            var missingBody = config.MessagePrompt && result.ParsedBody is null;
+
+            if (!missingScope && !missingBody)
+                return;
+
+            await HandleIncompleteMessageAsync(console, result, config, missingScope, missingBody);
+            return;
+        }
+
+        await PrependGitmojiAsync(console, commitMessage.Subject, config, gitmojis);
     }
 
     // Skip during an interactive rebase. Git doesn't pass a source argument in
@@ -77,6 +87,57 @@ public sealed partial class HookCommand : ICommand
         var gitDir = Path.GetDirectoryName(Path.GetFullPath(commitMessageFile))!;
         return Directory.Exists(Path.Combine(gitDir, "rebase-merge")) ||
                Directory.Exists(Path.Combine(gitDir, "rebase-apply"));
+    }
+
+    private async Task HandleIncompleteMessageAsync(
+        IConsole console,
+        ValidationResult result,
+        ToolConfiguration config,
+        bool missingScope,
+        bool missingBody)
+    {
+        if (!_promptService.IsInteractive)
+        {
+            if (config.EnforceConvention)
+            {
+                var missing = BuildMissingPartsList(missingScope, missingBody);
+                throw new CommandException(
+                    $"dotnet-gitmoji: commit rejected — {missing}.\n" +
+                    "Add the required parts to your commit message or disable the corresponding prompt option.",
+                    1);
+            }
+
+            await console.Error.WriteLineAsync(
+                "⚠ dotnet-gitmoji: no interactive terminal available, keeping original commit message.");
+            return;
+        }
+
+        var scope = result.ParsedScope
+                    ?? (missingScope ? _promptService.AskScope(config.Scopes) : null);
+        var body = result.ParsedBody
+                   ?? (missingBody ? _promptService.AskMessage() : null);
+
+        var prefix = config.EmojiFormat == EmojiFormat.Emoji
+            ? result.MatchedGitmoji!.Emoji
+            : result.MatchedGitmoji!.Code;
+
+        var rawTitle = result.ParsedTitle ?? string.Empty;
+        var title = config.CapitalizeTitle && rawTitle.Length > 0
+            ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
+            : rawTitle;
+
+        var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
+        var newSubject = $"{prefix} {scopePart}{title}";
+
+        try
+        {
+            await _commitMessageService.WriteMessageAsync(CommitMessageFile, newSubject, body);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await console.Error.WriteLineAsync(
+                $"⚠ dotnet-gitmoji: could not write commit message, keeping original. ({ex.Message})");
+        }
     }
 
     private async Task PrependGitmojiAsync(
@@ -130,23 +191,27 @@ public sealed partial class HookCommand : ICommand
         var title = config.CapitalizeTitle
             ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
             : rawTitle;
-        var newMessage = $"{prefix} {scopePart}{title}";
+        var newSubject = $"{prefix} {scopePart}{title}";
 
-        if (config.MessagePrompt)
-        {
-            var body = _promptService.AskMessage();
-            if (!string.IsNullOrWhiteSpace(body))
-                newMessage = $"{newMessage}\n\n{body}";
-        }
+        var body = config.MessagePrompt ? _promptService.AskMessage() : null;
 
         try
         {
-            await _commitMessageService.WriteMessageAsync(CommitMessageFile, newMessage);
+            await _commitMessageService.WriteMessageAsync(CommitMessageFile, newSubject, body);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             await console.Error.WriteLineAsync(
                 $"⚠ dotnet-gitmoji: could not write commit message, keeping original. ({ex.Message})");
         }
+    }
+
+    private static string BuildMissingPartsList(bool missingScope, bool missingBody)
+    {
+        if (missingScope && missingBody)
+            return "scope and message body are required";
+        if (missingScope)
+            return "scope is required (scopePrompt is enabled)";
+        return "message body is required (messagePrompt is enabled)";
     }
 }

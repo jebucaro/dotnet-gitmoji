@@ -8,7 +8,6 @@ namespace DotnetGitmoji.Services;
 public sealed partial class PromptService : IPromptService
 {
     public const int MaxScopeLength = 32;
-    private const string NoneScopeOption = "(none)";
     private const int GitmojiPageSize = 15;
 
     [GeneratedRegex(@"^[a-zA-Z0-9_\-]+$")]
@@ -68,39 +67,36 @@ public sealed partial class PromptService : IPromptService
                 return null;
 
             var selected = SelectWithFuzzySearch(
-                BuildScopeOptions(scopes),
+                scopes,
                 "Select scope:",
                 "Type to fuzzy search scopes...",
                 12,
-                scope => scope == NoneScopeOption ? "[grey](none)[/]" : Markup.Escape(scope),
-                (_, query) => RankScopeOptions(scopes, query));
+                Markup.Escape,
+                (_, query) => _fuzzyMatcher.RankScopes(scopes, query).ToList());
 
-            return selected == NoneScopeOption ? null : selected;
+            return selected;
         }
 
-        var scope = _console.Prompt(
-            new TextPrompt<string>("[grey]Enter scope (optional, press Enter to skip):[/]")
-                .AllowEmpty());
-
-        if (string.IsNullOrWhiteSpace(scope))
-            return null;
-
-        scope = scope.Trim();
-
-        if (!ScopePattern().IsMatch(scope))
+        while (true)
         {
-            _console.MarkupLine(
-                "[yellow]Warning: scope contains invalid characters (only alphanumeric, _ and - allowed). Scope ignored.[/]");
-            return null;
-        }
+            var input = _console.Prompt(new TextPrompt<string>("[grey]Enter scope:[/]"));
+            var scope = input.Trim();
 
-        if (scope.Length > MaxScopeLength)
-        {
-            scope = scope[..MaxScopeLength];
-            _console.MarkupLine($"[yellow]Warning: scope truncated to {MaxScopeLength} characters.[/]");
-        }
+            if (!ScopePattern().IsMatch(scope))
+            {
+                _console.MarkupLine(
+                    "[yellow]Only alphanumeric, _ and - are allowed. Try again.[/]");
+                continue;
+            }
 
-        return scope;
+            if (scope.Length > MaxScopeLength)
+            {
+                scope = scope[..MaxScopeLength];
+                _console.MarkupLine($"[yellow]Scope truncated to {MaxScopeLength} characters.[/]");
+            }
+
+            return scope;
+        }
     }
 
     public string? AskTitle(ToolConfiguration config, string? defaultValue = null)
@@ -144,28 +140,6 @@ public sealed partial class PromptService : IPromptService
     {
         var message = _console.Ask<string?>("[grey]Enter commit message:[/]");
         return string.IsNullOrWhiteSpace(message) ? null : message;
-    }
-
-    private static List<string> BuildScopeOptions(IReadOnlyList<string> scopes)
-    {
-        var options = new List<string> { NoneScopeOption };
-        options.AddRange(scopes);
-        return options;
-    }
-
-    private List<string> RankScopeOptions(IReadOnlyList<string> scopes, string query)
-    {
-        if (string.IsNullOrWhiteSpace(query))
-            return BuildScopeOptions(scopes);
-
-        var rankedScopes = _fuzzyMatcher.RankScopes(scopes, query).ToList();
-        var trimmedQuery = query.Trim();
-        if (trimmedQuery.Length > 0 &&
-            (NoneScopeOption.Contains(trimmedQuery, StringComparison.OrdinalIgnoreCase) ||
-             "none".Contains(trimmedQuery, StringComparison.OrdinalIgnoreCase)))
-            rankedScopes.Insert(0, NoneScopeOption);
-
-        return rankedScopes;
     }
 
     private T SelectWithFuzzySearch<T>(
