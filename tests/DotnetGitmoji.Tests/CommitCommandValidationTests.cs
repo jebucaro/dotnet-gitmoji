@@ -281,4 +281,23 @@ public class CommitCommandValidationTests
         Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenScopePromptIsTrueAndPredefinedScopes_PassesScopesToPrompt()
+    {
+        var predefinedScopes = new[] { "api", "core" };
+        _configService.LoadAsync().Returns(new ToolConfiguration { ScopePrompt = true, Scopes = predefinedScopes });
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
+        _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
+        _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
+
+        var command = CreateCommand();
+        var console = new FakeInMemoryConsole();
+
+        await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+
+        _promptService.Received(1).AskScope(
+            Arg.Is<string[]?>(s => s != null && s.Contains("api") && s.Contains("core")));
+    }
 }
