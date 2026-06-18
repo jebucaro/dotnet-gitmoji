@@ -22,6 +22,8 @@ fi
 
 dotnet tool restore
 
+rm -rf tests/DotnetGitmoji.Tests/TestResults/
+
 dotnet tool run dotnet-sonarscanner begin \
   /k:"dotnet-gitmoji" \
   /d:sonar.host.url="http://localhost:9000" \
@@ -30,8 +32,6 @@ dotnet tool run dotnet-sonarscanner begin \
   /d:sonar.exclusions="**/obj/**,**/bin/**"
 
 dotnet build --no-incremental --disable-build-servers
-
-rm -rf tests/DotnetGitmoji.Tests/TestResults/
 
 dotnet test --collect:"XPlat Code Coverage" --settings coverage.runsettings
 
