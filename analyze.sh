@@ -31,6 +31,8 @@ dotnet tool run dotnet-sonarscanner begin \
 
 dotnet build --no-incremental --disable-build-servers
 
+rm -rf tests/DotnetGitmoji.Tests/TestResults/
+
 dotnet test --collect:"XPlat Code Coverage" --settings coverage.runsettings
 
 dotnet tool run dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
