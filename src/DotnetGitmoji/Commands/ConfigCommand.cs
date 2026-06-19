@@ -138,7 +138,7 @@ public sealed partial class ConfigCommand : ICommand
             ? null
             : int.Parse(input, NumberStyles.None, CultureInfo.InvariantCulture);
 
-        var trim = config.TrimTitleWhenExceeded;
+        var trim = false;
         if (maxTitleLength is not null)
             trim = await AnsiConsole.ConfirmAsync(
                 "Trim titles that exceed the maximum length? (interactive prompts only)",
