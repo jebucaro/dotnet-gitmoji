@@ -21,8 +21,8 @@ public class ConfigurationServiceTests
         Assert.Equal(EmojiFormat.Emoji, config.EmojiFormat);
         Assert.Equal("https://gitmoji.dev/api/gitmojis", config.GitmojisUrl);
         Assert.True(config.ShowSemverBadge);
-        Assert.NotNull(config.Scopes);
-        Assert.Equal(["api", "auth", "core", "ui"], config.Scopes);
+        Assert.False(config.NormalizeCommitFormat);
+        Assert.Null(config.Scopes);
     }
 
     [Fact]

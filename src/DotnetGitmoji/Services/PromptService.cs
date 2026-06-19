@@ -9,6 +9,7 @@ public sealed partial class PromptService : IPromptService
 {
     public const int MaxScopeLength = 32;
     private const int GitmojiPageSize = 15;
+    private const string ScopeNoneOption = "(none)";
 
     [GeneratedRegex(@"^[a-zA-Z0-9_\-]+$")]
     private static partial Regex ScopePattern();
@@ -50,6 +51,10 @@ public sealed partial class PromptService : IPromptService
         _console.MarkupLine(
             $"[green]✔[/] [bold]Gitmoji:[/] {Markup.Escape(result.Emoji)} [grey]{Markup.Escape(result.Description)}[/]{FormatSemverBadge(result, showSemverBadge)}");
 
+        if (showSemverBadge && result.Semver is "patch" or "minor")
+            _console.MarkupLine(
+                "[yellow]⚠ For breaking changes, consider 💥 [bold](boom)[/] — it signals MAJOR semver impact.[/]");
+
         return result;
     }
 
@@ -73,15 +78,17 @@ public sealed partial class PromptService : IPromptService
             if (scopes.Length == 0)
                 return null;
 
+            var scopesWithNone = scopes.Prepend(ScopeNoneOption).ToArray();
             var selected = SelectWithFuzzySearch(
-                scopes,
+                scopesWithNone,
                 "Select scope:",
                 "Type to fuzzy search scopes...",
                 12,
-                Markup.Escape,
-                (_, query) => _fuzzyMatcher.RankScopes(scopes, query).ToList());
+                item => item == ScopeNoneOption ? "[grey](none)[/]" : Markup.Escape(item),
+                (_, query) => _fuzzyMatcher.RankScopes(scopes, query)
+                    .Prepend(ScopeNoneOption).ToList());
 
-            return selected;
+            return selected == ScopeNoneOption ? null : selected;
         }
 
         while (true)
