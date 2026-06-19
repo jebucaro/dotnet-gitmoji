@@ -29,31 +29,44 @@ public sealed partial class ConfigCommand : ICommand
         if (Global && Local)
             throw new CommandException("Cannot specify both --global and --local.", 1);
 
-        ToolConfiguration config;
+        ToolConfiguration config = null!;
         try
         {
-            config = await _configurationService.LoadAsync();
+            await AnsiConsole.Status()
+                .StartAsync("Loading configuration...",
+                    async _ => { config = await _configurationService.LoadAsync(); });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             throw new CommandException($"Failed to load configuration: {ex.Message}", 1);
         }
 
+        WriteSection("Message Format", "How commit subjects are structured");
         var emojiFormat = await AnsiConsole.PromptAsync(
             new SelectionPrompt<EmojiFormat>()
                 .Title("Select emoji format:")
                 .PageSize(5)
                 .UseConverter(FormatEmojiChoice)
                 .AddChoices(EmojiFormat.Emoji, EmojiFormat.Code));
-
-        var showSemverBadge =
-            await AnsiConsole.ConfirmAsync("Show semver badge in gitmoji selector?", config.ShowSemverBadge);
-        var scopePrompt = await AnsiConsole.ConfirmAsync("Prompt for scope?", config.ScopePrompt);
-        var messagePrompt = await AnsiConsole.ConfirmAsync("Prompt for commit message?", config.MessagePrompt);
+        AnsiConsole.MarkupLine($"Emoji format: {Markup.Escape(FormatEmojiChoice(emojiFormat))}");
+        var normalizeCommitFormat = await AnsiConsole.ConfirmAsync(
+            "Normalize commit format to 'emoji: title' (adds ': ' even without scope)?",
+            config.NormalizeCommitFormat);
         var capitalizeTitle = await AnsiConsole.ConfirmAsync("Capitalize commit title?", config.CapitalizeTitle);
 
+        WriteSection("Scope", "Scope prompting and predefined scope list");
+        var scopePrompt = await AnsiConsole.ConfirmAsync("Prompt for scope?", config.ScopePrompt);
+        var scopes = await PromptScopesAsync(config);
+
+        WriteSection("Body & Title", "Message body and title length constraints");
+        var messagePrompt = await AnsiConsole.ConfirmAsync("Prompt for commit message?", config.MessagePrompt);
         var (maxTitleLength, trimTitleWhenExceeded) = await PromptMaxTitleLengthAsync(config);
 
+        WriteSection("Display", "What's shown in the gitmoji selector");
+        var showSemverBadge =
+            await AnsiConsole.ConfirmAsync("Show semver badge in gitmoji selector?", config.ShowSemverBadge);
+
+        WriteSection("Git Behavior", "Staging, signing, and convention enforcement");
         var autoAdd =
             await AnsiConsole.ConfirmAsync("Auto-add changes before commit? (client mode only)", config.AutoAdd);
         var signedCommit =
@@ -62,37 +75,45 @@ public sealed partial class ConfigCommand : ICommand
             "Enforce gitmoji convention on all commits (including IDE/non-interactive)?",
             config.EnforceConvention);
 
+        WriteSection("Advanced", "API endpoint for gitmoji data");
         var gitmojisUrl = await AnsiConsole.PromptAsync(
             new TextPrompt<string>("Gitmojis API URL:")
                 .DefaultValue(config.GitmojisUrl)
                 .Validate(ValidateGitmojisUrl));
 
-        var scopes = await PromptScopesAsync(config);
-
         config.EmojiFormat = emojiFormat;
-        config.ShowSemverBadge = showSemverBadge;
-        config.ScopePrompt = scopePrompt;
-        config.MessagePrompt = messagePrompt;
+        config.NormalizeCommitFormat = normalizeCommitFormat;
         config.CapitalizeTitle = capitalizeTitle;
+        config.ScopePrompt = scopePrompt;
+        config.Scopes = scopes;
+        config.MessagePrompt = messagePrompt;
         config.MaxTitleLength = maxTitleLength;
         config.TrimTitleWhenExceeded = trimTitleWhenExceeded;
+        config.ShowSemverBadge = showSemverBadge;
         config.AutoAdd = autoAdd;
         config.SignedCommit = signedCommit;
         config.EnforceConvention = enforceConvention;
         config.GitmojisUrl = gitmojisUrl;
-        config.Scopes = scopes;
 
         var target = DetermineTarget();
         try
         {
-            await _configurationService.SaveAsync(config, target);
+            await AnsiConsole.Status()
+                .StartAsync("Saving configuration...",
+                    async _ => { await _configurationService.SaveAsync(config, target); });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             throw new CommandException($"Failed to save configuration: {ex.Message}", 1);
         }
 
-        await console.Output.WriteLineAsync("Configuration saved.");
+        var location = target switch
+        {
+            ConfigSaveTarget.Global => "~/.dotnet-gitmoji/config.json",
+            ConfigSaveTarget.Local  => ".gitmojirc.json",
+            _                       => "config file"
+        };
+        AnsiConsole.MarkupLine($"[green]✔[/] Configuration saved to [grey]{Markup.Escape(location)}[/]");
     }
 
     internal ConfigSaveTarget DetermineTarget()
@@ -156,7 +177,7 @@ public sealed partial class ConfigCommand : ICommand
 
     internal static string FormatEmojiChoice(EmojiFormat format)
     {
-        return format == EmojiFormat.Emoji ? "Emoji (🐛)" : "Code (:\u200Bbug:)";
+        return format == EmojiFormat.Emoji ? "Emoji (🐛)" : "Code (:​bug:)";
         // zero-width space breaks Spectre.Console :name: emoji pattern
     }
 
@@ -173,5 +194,16 @@ public sealed partial class ConfigCommand : ICommand
         return Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps
             ? ValidationResult.Success()
             : ValidationResult.Error("[red]Must be a valid HTTPS URL[/]");
+    }
+
+    private static void WriteSection(string title, string description)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(
+            new Panel(new Markup($"[dim]{Markup.Escape(description)}[/]"))
+                .Header($"[bold green]{Markup.Escape(title)}[/]")
+                .RoundedBorder()
+                .BorderColor(Color.Green)
+                .Expand());
     }
 }
