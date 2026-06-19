@@ -177,7 +177,7 @@ public sealed partial class ConfigCommand : ICommand
 
     internal static string FormatEmojiChoice(EmojiFormat format)
     {
-        return format == EmojiFormat.Emoji ? "Emoji (🐛)" : "Code (:​bug:)";
+        return format == EmojiFormat.Emoji ? "Emoji (🐛)" : "Code (:\u200Bbug:)";
         // zero-width space breaks Spectre.Console :name: emoji pattern
     }
 
