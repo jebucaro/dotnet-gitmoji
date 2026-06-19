@@ -300,4 +300,21 @@ public class CommitCommandValidationTests
         _promptService.Received(1).AskScope(
             Arg.Is<string[]?>(s => s != null && s.Contains("api") && s.Contains("core")));
     }
+
+    [Theory]
+    [InlineData("🐛", null, "Fix bug", false, "🐛 Fix bug")]
+    [InlineData("🐛", "auth", "Fix bug", false, "🐛 (auth): Fix bug")]
+    [InlineData("🐛", null, "Fix bug", true, "🐛: Fix bug")]
+    [InlineData("🐛", "auth", "Fix bug", true, "🐛 (auth): Fix bug")]
+    [InlineData(":bug:", null, "Fix bug", false, ":bug: Fix bug")]
+    [InlineData(":bug:", "auth", "Fix bug", false, ":bug: (auth): Fix bug")]
+    [InlineData(":bug:", null, "Fix bug", true, ":bug:: Fix bug")]
+    [InlineData(":bug:", "auth", "Fix bug", true, ":bug: (auth): Fix bug")]
+    public void BuildSubject_ProducesCorrectFormat(
+        string prefix, string? scope, string title, bool normalize, string expected)
+    {
+        var result = CommitCommand.BuildSubject(prefix, scope, title, normalize);
+
+        Assert.Equal(expected, result);
+    }
 }

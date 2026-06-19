@@ -9,5 +9,7 @@
   "autoAdd": false,
   "signedCommit": true,
   "scopes": null,
-  "enforceConvention": true
+  "enforceConvention": true,
+  "showSemverBadge": true,
+  "normalizeCommitFormat": false
 }

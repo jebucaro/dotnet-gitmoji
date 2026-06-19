@@ -10,6 +10,12 @@ namespace DotnetGitmoji.Commands;
 [Command]
 public sealed partial class HookCommand : ICommand
 {
+    private const string NoInteractiveTerminalMessage =
+        "⚠ dotnet-gitmoji: no interactive terminal available, keeping original commit message.";
+
+    private const string WriteMessageErrorTemplate =
+        "⚠ dotnet-gitmoji: could not write commit message, keeping original. ({0})";
+
     private readonly ICommitMessageService _commitMessageService;
     private readonly ICommitMessageValidator _validator;
     private readonly IGitmojiProvider _gitmojiProvider;
@@ -107,8 +113,7 @@ public sealed partial class HookCommand : ICommand
                     1);
             }
 
-            await console.Error.WriteLineAsync(
-                "⚠ dotnet-gitmoji: no interactive terminal available, keeping original commit message.");
+            await console.Error.WriteLineAsync(NoInteractiveTerminalMessage);
             return;
         }
 
@@ -126,8 +131,7 @@ public sealed partial class HookCommand : ICommand
             ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
             : rawTitle;
 
-        var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
-        var newSubject = $"{prefix} {scopePart}{title}";
+        var newSubject = CommitCommand.BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
 
         try
         {
@@ -135,8 +139,7 @@ public sealed partial class HookCommand : ICommand
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            await console.Error.WriteLineAsync(
-                $"⚠ dotnet-gitmoji: could not write commit message, keeping original. ({ex.Message})");
+            await console.Error.WriteLineAsync(string.Format(WriteMessageErrorTemplate, ex.Message));
         }
     }
 
@@ -154,9 +157,7 @@ public sealed partial class HookCommand : ICommand
                     "Start your commit title with a gitmoji emoji or shortcode (e.g. \":bug: Fix login crash\").",
                     1);
 
-            await console.Error.WriteLineAsync(
-                "⚠ dotnet-gitmoji: no interactive terminal available, " +
-                "keeping original commit message.");
+            await console.Error.WriteLineAsync(NoInteractiveTerminalMessage);
             return;
         }
 
@@ -170,7 +171,6 @@ public sealed partial class HookCommand : ICommand
             ? _promptService.AskScope(config.Scopes)
             : null;
 
-        var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
         var rawTitle = _promptService.AskTitle(config, message);
 
         if (string.IsNullOrWhiteSpace(rawTitle))
@@ -191,7 +191,7 @@ public sealed partial class HookCommand : ICommand
         var title = config.CapitalizeTitle
             ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
             : rawTitle;
-        var newSubject = $"{prefix} {scopePart}{title}";
+        var newSubject = CommitCommand.BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
 
         var body = config.MessagePrompt ? _promptService.AskMessage() : null;
 
@@ -201,8 +201,7 @@ public sealed partial class HookCommand : ICommand
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            await console.Error.WriteLineAsync(
-                $"⚠ dotnet-gitmoji: could not write commit message, keeping original. ({ex.Message})");
+            await console.Error.WriteLineAsync(string.Format(WriteMessageErrorTemplate, ex.Message));
         }
     }
 

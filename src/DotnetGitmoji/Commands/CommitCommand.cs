@@ -89,8 +89,7 @@ public sealed partial class CommitCommand : ICommand
         var prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? selected.Emoji
             : selected.Code;
-        var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
-        var commitMessage = $"{prefix} {scopePart}{title}";
+        var commitMessage = BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
 
         var body = Message;
         if (body is null && config.MessagePrompt)
@@ -144,6 +143,20 @@ public sealed partial class CommitCommand : ICommand
         if (!hasStagedChanges)
             throw new CommandException(
                 config.AutoAdd ? NoStagedChangesAfterAutoAddMessage : NoStagedChangesMessage, 1);
+    }
+
+    internal static string BuildSubject(string prefix, string? scope, string title, bool normalize)
+    {
+        if (normalize)
+        {
+            var scopePart = string.IsNullOrWhiteSpace(scope) ? ": " : $" ({scope}): ";
+            return $"{prefix}{scopePart}{title}";
+        }
+        else
+        {
+            var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
+            return $"{prefix} {scopePart}{title}";
+        }
     }
 
     private static List<string> BuildGitArgs(string commitMessage, string? body, ToolConfiguration config)

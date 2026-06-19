@@ -174,4 +174,55 @@ public class GitmojiCommitMessageValidatorTests
         Assert.True(result.IsValid);
         Assert.Null(result.ParsedBody);
     }
+
+    [Fact]
+    public void Validate_WhenEmojiNormalizedFormat_StripsSeparatorFromTitle()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(new CommitMessageContent("🐛: Fix null ref crash", null), gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Null(result.ParsedScope);
+        Assert.Equal("Fix null ref crash", result.ParsedTitle);
+    }
+
+    [Fact]
+    public void Validate_WhenShortcodeNormalizedFormat_StripsSeparatorFromTitle()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(new CommitMessageContent(":bug:: Fix null ref crash", null), gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Null(result.ParsedScope);
+        Assert.Equal("Fix null ref crash", result.ParsedTitle);
+    }
+
+    [Fact]
+    public void Validate_WhenLegacyFormatNoScope_TitleUnchanged()
+    {
+        var gitmojis = new[]
+        {
+            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
+        };
+
+        var validator = new GitmojiCommitMessageValidator();
+
+        var result = validator.Validate(new CommitMessageContent("🐛 Fix null ref crash", null), gitmojis);
+
+        Assert.True(result.IsValid);
+        Assert.Null(result.ParsedScope);
+        Assert.Equal("Fix null ref crash", result.ParsedTitle);
+    }
 }

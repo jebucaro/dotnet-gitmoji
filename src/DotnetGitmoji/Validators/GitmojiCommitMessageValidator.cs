@@ -42,6 +42,10 @@ public sealed partial class GitmojiCommitMessageValidator : ICommitMessageValida
             return new ValidationResult(true, gitmoji, scope, title, body);
         }
 
-        return new ValidationResult(true, gitmoji, null, remainder, body);
+        // Strip ": " separator used in the normalized commit format (e.g. "🐛: Fix bug")
+        var titlePart = remainder.StartsWith(": ", StringComparison.Ordinal)
+            ? remainder[2..]
+            : remainder;
+        return new ValidationResult(true, gitmoji, null, titlePart, body);
     }
 }
