@@ -31,7 +31,7 @@ public sealed partial class PromptService : IPromptService
         Environment.UserInteractive &&
         !Console.IsInputRedirected;
 
-    public Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis)
+    public Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis, bool showSemverBadge = true)
     {
         ArgumentNullException.ThrowIfNull(gitmojis);
         if (gitmojis.Count == 0)
@@ -43,14 +43,21 @@ public sealed partial class PromptService : IPromptService
             "Type to fuzzy search gitmojis...",
             GitmojiPageSize,
             gitmoji =>
-                $"{Markup.Escape(gitmoji.Emoji)} - {Markup.Escape(gitmoji.Description)}",
+                $"{Markup.Escape(gitmoji.Emoji)} - {Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}",
             (items, query) => _fuzzyMatcher.RankGitmojis(items, query));
 
         Console.Clear();
         _console.MarkupLine(
-            $"[green]✔[/] [bold]Gitmoji:[/] {Markup.Escape(result.Emoji)} [grey]{Markup.Escape(result.Description)}[/]");
+            $"[green]✔[/] [bold]Gitmoji:[/] {Markup.Escape(result.Emoji)} [grey]{Markup.Escape(result.Description)}[/]{FormatSemverBadge(result, showSemverBadge)}");
 
         return result;
+    }
+
+    private static string FormatSemverBadge(Gitmoji gitmoji, bool showSemverBadge)
+    {
+        if (!showSemverBadge || gitmoji.Semver is null)
+            return string.Empty;
+        return $" [blue]({gitmoji.Semver})[/]";
     }
 
     public string? AskScope(IReadOnlyList<string>? predefinedScopes = null)

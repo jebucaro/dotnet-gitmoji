@@ -46,6 +46,8 @@ public sealed partial class ConfigCommand : ICommand
                 .UseConverter(FormatEmojiChoice)
                 .AddChoices(EmojiFormat.Emoji, EmojiFormat.Code));
 
+        var showSemverBadge =
+            await AnsiConsole.ConfirmAsync("Show semver badge in gitmoji selector?", config.ShowSemverBadge);
         var scopePrompt = await AnsiConsole.ConfirmAsync("Prompt for scope?", config.ScopePrompt);
         var messagePrompt = await AnsiConsole.ConfirmAsync("Prompt for commit message?", config.MessagePrompt);
         var capitalizeTitle = await AnsiConsole.ConfirmAsync("Capitalize commit title?", config.CapitalizeTitle);
@@ -68,6 +70,7 @@ public sealed partial class ConfigCommand : ICommand
         var scopes = await PromptScopesAsync(config);
 
         config.EmojiFormat = emojiFormat;
+        config.ShowSemverBadge = showSemverBadge;
         config.ScopePrompt = scopePrompt;
         config.MessagePrompt = messagePrompt;
         config.CapitalizeTitle = capitalizeTitle;

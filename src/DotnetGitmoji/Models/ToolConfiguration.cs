@@ -13,6 +13,7 @@ public sealed class ToolConfiguration
     public string GitmojisUrl { get; set; } = "https://gitmoji.dev/api/gitmojis";
     public bool AutoAdd { get; set; } = false;
     public bool SignedCommit { get; set; } = false;
-    public string[]? Scopes { get; set; }
+    public string[]? Scopes { get; set; } = ["api", "auth", "core", "ui"];
     public bool EnforceConvention { get; set; } = false;
+    public bool ShowSemverBadge { get; set; } = true;
 }

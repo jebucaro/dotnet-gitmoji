@@ -160,7 +160,7 @@ public sealed partial class HookCommand : ICommand
             return;
         }
 
-        var selectedGitmoji = _promptService.SelectGitmoji(gitmojis);
+        var selectedGitmoji = _promptService.SelectGitmoji(gitmojis, config.ShowSemverBadge);
 
         var prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? selectedGitmoji.Emoji

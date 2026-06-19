@@ -71,7 +71,7 @@ public sealed partial class CommitCommand : ICommand
         ValidateCommandOptions(config);
         await EnsureStagedChangesAsync(config);
 
-        var selected = _promptService.SelectGitmoji(gitmojis);
+        var selected = _promptService.SelectGitmoji(gitmojis, config.ShowSemverBadge);
         var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
         var rawTitle = Title ?? _promptService.AskTitle(config);
 
