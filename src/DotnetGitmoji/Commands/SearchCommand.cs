@@ -36,12 +36,16 @@ public sealed partial class SearchCommand : ICommand
             .Border(TableBorder.Simple)
             .AddColumn("Emoji")
             .AddColumn("Code")
-            .AddColumn("Description");
+            .AddColumn("Description")
+            .AddColumn("Semver");
 
         foreach (var g in results)
-            table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description));
+            table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description), new Markup(FormatSemver(g.Semver)));
 
         AnsiConsole.MarkupLine($"[grey]Found {results.Count} gitmoji(s) matching '[white]{escapedKeyword}[/]':[/]");
         AnsiConsole.Write(table);
     }
+
+    private static string FormatSemver(string? semver) =>
+        semver is null ? string.Empty : $"[blue]{semver}[/]";
 }
