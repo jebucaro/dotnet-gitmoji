@@ -45,8 +45,8 @@ public sealed partial class PromptService : IPromptService
             GitmojiPageSize,
             gitmoji => $"{Markup.Escape(gitmoji.Emoji)} {Markup.Escape(gitmoji.Code)}",
             (items, query) => _fuzzyMatcher.RankGitmojis(items, query),
-            detailTitle: "[bold green]Description[/]",
-            renderDetail: gitmoji =>
+            "[bold green]Description[/]",
+            gitmoji =>
                 $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}");
 
         Console.Clear();
@@ -182,7 +182,8 @@ public sealed partial class PromptService : IPromptService
             else if (selectedIndex >= rankedItems.Count)
                 selectedIndex = rankedItems.Count - 1;
 
-            RenderFuzzySelection(title, searchPlaceholder, query, rankedItems, selectedIndex, pageSize, renderItem, detailTitle, renderDetail);
+            RenderFuzzySelection(title, searchPlaceholder, query, rankedItems, selectedIndex, pageSize, renderItem,
+                detailTitle, renderDetail);
 
             var keyAction = FuzzySelectorInputRouter.Route(Console.ReadKey(true));
             if (TryApplyKeyAction(keyAction, rankedItems, ref query, ref selectedIndex, out var result))
