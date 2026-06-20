@@ -110,8 +110,8 @@ public sealed partial class ConfigCommand : ICommand
         var location = target switch
         {
             ConfigSaveTarget.Global => "~/.dotnet-gitmoji/config.json",
-            ConfigSaveTarget.Local  => ".gitmojirc.json",
-            _                       => "config file"
+            ConfigSaveTarget.Local => ".gitmojirc.json",
+            _ => "config file"
         };
         AnsiConsole.MarkupLine($"[green]✔[/] Configuration saved to [grey]{Markup.Escape(location)}[/]");
     }
