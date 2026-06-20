@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using DotnetGitmoji.Models;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 
 namespace DotnetGitmoji.Services;
 
@@ -43,7 +44,7 @@ public sealed partial class PromptService : IPromptService
             "Choose a gitmoji:",
             "Type to fuzzy search gitmojis...",
             GitmojiPageSize,
-            gitmoji => $"{Markup.Escape(gitmoji.Emoji)} {Markup.Escape(gitmoji.Code)}",
+            gitmoji => new Text($"{gitmoji.Emoji} {gitmoji.Code}"),
             (items, query) => _fuzzyMatcher.RankGitmojis(items, query),
             "[bold green]Description[/]",
             gitmoji =>
@@ -86,7 +87,7 @@ public sealed partial class PromptService : IPromptService
                 "Select scope:",
                 "Type to fuzzy search scopes...",
                 12,
-                item => item == ScopeNoneOption ? "[grey](none)[/]" : Markup.Escape(item),
+                item => item == ScopeNoneOption ? (IRenderable)new Markup("[grey](none)[/]") : new Text(item),
                 (_, query) => _fuzzyMatcher.RankScopes(scopes, query)
                     .Prepend(ScopeNoneOption).ToList());
 
@@ -163,7 +164,7 @@ public sealed partial class PromptService : IPromptService
         string title,
         string searchPlaceholder,
         int pageSize,
-        Func<T, string> renderItem,
+        Func<T, IRenderable> renderItem,
         Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems,
         string? detailTitle = null,
         Func<T, string?>? renderDetail = null) where T : class
@@ -254,7 +255,7 @@ public sealed partial class PromptService : IPromptService
         IReadOnlyList<T> rankedItems,
         int selectedIndex,
         int pageSize,
-        Func<T, string> renderItem,
+        Func<T, IRenderable> renderItem,
         string? detailTitle = null,
         Func<T, string?>? renderDetail = null)
     {
@@ -280,8 +281,10 @@ public sealed partial class PromptService : IPromptService
         for (var index = 0; index < visibleItems.Length; index++)
         {
             var absoluteIndex = pageStart + index;
-            var marker = absoluteIndex == selectedIndex ? "[green]❯[/]" : " ";
-            _console.MarkupLine($"{marker} {renderItem(visibleItems[index])}");
+            var marker = absoluteIndex == selectedIndex ? "[green]❯ [/]" : "  ";
+            _console.Markup(marker);
+            _console.Write(renderItem(visibleItems[index]));
+            _console.WriteLine();
         }
 
         if (rankedItems.Count > pageSize)
