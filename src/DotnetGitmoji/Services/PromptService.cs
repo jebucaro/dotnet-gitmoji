@@ -43,9 +43,11 @@ public sealed partial class PromptService : IPromptService
             "Choose a gitmoji:",
             "Type to fuzzy search gitmojis...",
             GitmojiPageSize,
-            gitmoji =>
-                $"{Markup.Escape(gitmoji.Emoji)} - {Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}",
-            (items, query) => _fuzzyMatcher.RankGitmojis(items, query));
+            gitmoji => $"{Markup.Escape(gitmoji.Emoji)} {Markup.Escape(gitmoji.Code)}",
+            (items, query) => _fuzzyMatcher.RankGitmojis(items, query),
+            detailTitle: "[bold green]Description[/]",
+            renderDetail: gitmoji =>
+                $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}");
 
         Console.Clear();
         _console.MarkupLine(
@@ -162,7 +164,9 @@ public sealed partial class PromptService : IPromptService
         string searchPlaceholder,
         int pageSize,
         Func<T, string> renderItem,
-        Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems) where T : class
+        Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems,
+        string? detailTitle = null,
+        Func<T, string?>? renderDetail = null) where T : class
     {
         if (items.Count == 0)
             throw new InvalidOperationException("Cannot show an empty selection prompt.");
@@ -178,7 +182,7 @@ public sealed partial class PromptService : IPromptService
             else if (selectedIndex >= rankedItems.Count)
                 selectedIndex = rankedItems.Count - 1;
 
-            RenderFuzzySelection(title, searchPlaceholder, query, rankedItems, selectedIndex, pageSize, renderItem);
+            RenderFuzzySelection(title, searchPlaceholder, query, rankedItems, selectedIndex, pageSize, renderItem, detailTitle, renderDetail);
 
             var keyAction = FuzzySelectorInputRouter.Route(Console.ReadKey(true));
             if (TryApplyKeyAction(keyAction, rankedItems, ref query, ref selectedIndex, out var result))
@@ -249,7 +253,9 @@ public sealed partial class PromptService : IPromptService
         IReadOnlyList<T> rankedItems,
         int selectedIndex,
         int pageSize,
-        Func<T, string> renderItem)
+        Func<T, string> renderItem,
+        string? detailTitle = null,
+        Func<T, string?>? renderDetail = null)
     {
         Console.Clear();
         _console.MarkupLine($"[bold]{Markup.Escape(title)}[/]");
@@ -282,6 +288,21 @@ public sealed partial class PromptService : IPromptService
             var first = pageStart + 1;
             var last = pageStart + visibleItems.Length;
             _console.MarkupLine($"[grey]Showing {first}-{last} of {rankedItems.Count} matches.[/]");
+        }
+
+        if (renderDetail != null)
+        {
+            var detail = renderDetail(rankedItems[selectedIndex]);
+            if (detail is not null)
+            {
+                _console.WriteLine();
+                _console.Write(
+                    new Panel(new Markup(detail))
+                        .Header(detailTitle ?? string.Empty)
+                        .RoundedBorder()
+                        .BorderColor(Color.Green)
+                        .Expand());
+            }
         }
     }
 
