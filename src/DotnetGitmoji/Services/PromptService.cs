@@ -47,15 +47,16 @@ public sealed partial class PromptService : IPromptService
 
         var result = SelectWithFuzzySearch(
             gitmojis,
-            "Choose a gitmoji:",
-            "Type to fuzzy search gitmojis...",
-            GitmojiPageSize,
-            gitmoji => new Text($"{gitmoji.Emoji} {gitmoji.Code}"),
-            (items, query) => _fuzzyMatcher.RankGitmojis(items, query),
-            "[bold green]Description[/]",
-            gitmoji =>
-                $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}",
-            _banner);
+            new FuzzyPickerOptions<Gitmoji>(
+                "Choose a gitmoji:",
+                "Type to fuzzy search gitmojis...",
+                GitmojiPageSize,
+                gitmoji => new Text($"{gitmoji.Emoji} {gitmoji.Code}"),
+                "[bold green]Description[/]",
+                gitmoji =>
+                    $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}",
+                _banner),
+            (items, query) => _fuzzyMatcher.RankGitmojis(items, query));
 
         Console.Clear();
         _console.MarkupLine(
@@ -91,10 +92,13 @@ public sealed partial class PromptService : IPromptService
             var scopesWithNone = scopes.Prepend(ScopeNoneOption).ToArray();
             var selected = SelectWithFuzzySearch(
                 scopesWithNone,
-                "Select scope:",
-                "Type to fuzzy search scopes...",
-                12,
-                item => item == ScopeNoneOption ? (IRenderable)new Markup("[grey](none)[/]") : new Text(item),
+                new FuzzyPickerOptions<string>(
+                    "Select scope:",
+                    "Type to fuzzy search scopes...",
+                    12,
+                    item => item == ScopeNoneOption
+                        ? (IRenderable)new Markup("[grey](none)[/]")
+                        : new Text(item)),
                 (_, query) => _fuzzyMatcher.RankScopes(scopes, query)
                     .Prepend(ScopeNoneOption).ToList());
 
@@ -168,14 +172,8 @@ public sealed partial class PromptService : IPromptService
 
     private T SelectWithFuzzySearch<T>(
         IReadOnlyList<T> items,
-        string title,
-        string searchPlaceholder,
-        int pageSize,
-        Func<T, IRenderable> renderItem,
-        Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems,
-        string? detailTitle = null,
-        Func<T, string?>? renderDetail = null,
-        IRenderable? header = null) where T : class
+        FuzzyPickerOptions<T> options,
+        Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems) where T : class
     {
         if (items.Count == 0)
             throw new InvalidOperationException("Cannot show an empty selection prompt.");
@@ -191,8 +189,7 @@ public sealed partial class PromptService : IPromptService
             else if (selectedIndex >= rankedItems.Count)
                 selectedIndex = rankedItems.Count - 1;
 
-            RenderFuzzySelection(title, searchPlaceholder, query, rankedItems, selectedIndex, pageSize, renderItem,
-                detailTitle, renderDetail, header);
+            RenderFuzzySelection(options, query, rankedItems, selectedIndex);
 
             var keyAction = FuzzySelectorInputRouter.Route(Console.ReadKey(true));
             if (TryApplyKeyAction(keyAction, rankedItems, ref query, ref selectedIndex, out var result))
@@ -257,29 +254,23 @@ public sealed partial class PromptService : IPromptService
     }
 
     private void RenderFuzzySelection<T>(
-        string title,
-        string searchPlaceholder,
+        FuzzyPickerOptions<T> options,
         string query,
         IReadOnlyList<T> rankedItems,
-        int selectedIndex,
-        int pageSize,
-        Func<T, IRenderable> renderItem,
-        string? detailTitle = null,
-        Func<T, string?>? renderDetail = null,
-        IRenderable? header = null)
+        int selectedIndex)
     {
         Console.Clear();
-        if (header is not null)
+        if (options.Header is not null)
         {
-            _console.Write(header);
+            _console.Write(options.Header);
             _console.WriteLine();
         }
 
-        _console.MarkupLine($"[bold]{Markup.Escape(title)}[/]");
+        _console.MarkupLine($"[bold]{Markup.Escape(options.Title)}[/]");
         _console.MarkupLine("[grey]Type to fuzzy search. Use ↑/↓ to navigate, Enter to select, Esc to clear.[/]");
 
         var searchDisplay = string.IsNullOrWhiteSpace(query)
-            ? $"[grey]{Markup.Escape(searchPlaceholder)}[/]"
+            ? $"[grey]{Markup.Escape(options.SearchPlaceholder)}[/]"
             : $"[white]{Markup.Escape(query)}[/]";
         _console.MarkupLine($"[grey]Search:[/] {searchDisplay}");
         _console.MarkupLine(" ");
@@ -290,34 +281,34 @@ public sealed partial class PromptService : IPromptService
             return;
         }
 
-        var pageStart = CalculatePageStart(selectedIndex, rankedItems.Count, pageSize);
-        var visibleItems = rankedItems.Skip(pageStart).Take(pageSize).ToArray();
+        var pageStart = CalculatePageStart(selectedIndex, rankedItems.Count, options.PageSize);
+        var visibleItems = rankedItems.Skip(pageStart).Take(options.PageSize).ToArray();
 
         for (var index = 0; index < visibleItems.Length; index++)
         {
             var absoluteIndex = pageStart + index;
             var marker = absoluteIndex == selectedIndex ? "[green]❯ [/]" : "  ";
             _console.Markup(marker);
-            _console.Write(renderItem(visibleItems[index]));
+            _console.Write(options.RenderItem(visibleItems[index]));
             _console.WriteLine();
         }
 
-        if (rankedItems.Count > pageSize)
+        if (rankedItems.Count > options.PageSize)
         {
             var first = pageStart + 1;
             var last = pageStart + visibleItems.Length;
             _console.MarkupLine($"[grey]Showing {first}-{last} of {rankedItems.Count} matches.[/]");
         }
 
-        if (renderDetail != null)
+        if (options.RenderDetail != null)
         {
-            var detail = renderDetail(rankedItems[selectedIndex]);
+            var detail = options.RenderDetail(rankedItems[selectedIndex]);
             if (detail is not null)
             {
                 _console.WriteLine();
                 _console.Write(
                     new Panel(new Markup(detail))
-                        .Header(detailTitle ?? string.Empty)
+                        .Header(options.DetailTitle ?? string.Empty)
                         .RoundedBorder()
                         .BorderColor(Color.Green)
                         .Expand());
@@ -344,4 +335,13 @@ public sealed partial class PromptService : IPromptService
     {
         return index < count - 1 ? index + 1 : 0;
     }
+
+    private sealed record FuzzyPickerOptions<T>(
+        string Title,
+        string SearchPlaceholder,
+        int PageSize,
+        Func<T, IRenderable> RenderItem,
+        string? DetailTitle = null,
+        Func<T, string?>? RenderDetail = null,
+        IRenderable? Header = null);
 }
