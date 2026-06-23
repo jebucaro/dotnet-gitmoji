@@ -11,6 +11,12 @@ public sealed partial class PromptService : IPromptService
     public const int MaxScopeLength = 32;
     private const int GitmojiPageSize = 15;
     private const string ScopeNoneOption = "(none)";
+    private const string BannerTitle = "[bold][purple]dotnet[/][white]-[/][gold1]gitmoji[/][/]";
+    private const string BannerSubtitle = "[grey]emoji-driven commits[/]";
+
+    private static readonly IRenderable _banner = new Rows(
+        new Markup(BannerTitle),
+        new Markup(BannerSubtitle));
 
     [GeneratedRegex(@"^[a-zA-Z0-9_\-]+$")]
     private static partial Regex ScopePattern();
@@ -48,7 +54,8 @@ public sealed partial class PromptService : IPromptService
             (items, query) => _fuzzyMatcher.RankGitmojis(items, query),
             "[bold green]Description[/]",
             gitmoji =>
-                $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}");
+                $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}",
+            _banner);
 
         Console.Clear();
         _console.MarkupLine(
@@ -167,7 +174,8 @@ public sealed partial class PromptService : IPromptService
         Func<T, IRenderable> renderItem,
         Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems,
         string? detailTitle = null,
-        Func<T, string?>? renderDetail = null) where T : class
+        Func<T, string?>? renderDetail = null,
+        IRenderable? header = null) where T : class
     {
         if (items.Count == 0)
             throw new InvalidOperationException("Cannot show an empty selection prompt.");
@@ -184,7 +192,7 @@ public sealed partial class PromptService : IPromptService
                 selectedIndex = rankedItems.Count - 1;
 
             RenderFuzzySelection(title, searchPlaceholder, query, rankedItems, selectedIndex, pageSize, renderItem,
-                detailTitle, renderDetail);
+                detailTitle, renderDetail, header);
 
             var keyAction = FuzzySelectorInputRouter.Route(Console.ReadKey(true));
             if (TryApplyKeyAction(keyAction, rankedItems, ref query, ref selectedIndex, out var result))
@@ -257,9 +265,16 @@ public sealed partial class PromptService : IPromptService
         int pageSize,
         Func<T, IRenderable> renderItem,
         string? detailTitle = null,
-        Func<T, string?>? renderDetail = null)
+        Func<T, string?>? renderDetail = null,
+        IRenderable? header = null)
     {
         Console.Clear();
+        if (header is not null)
+        {
+            _console.Write(header);
+            _console.WriteLine();
+        }
+
         _console.MarkupLine($"[bold]{Markup.Escape(title)}[/]");
         _console.MarkupLine("[grey]Type to fuzzy search. Use ↑/↓ to navigate, Enter to select, Esc to clear.[/]");
 
