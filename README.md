@@ -206,7 +206,9 @@ Example file:
   "autoAdd": false,
   "signedCommit": false,
   "scopes": null,
-  "enforceConvention": false
+  "enforceConvention": false,
+  "showSemverBadge": true,
+  "normalizeCommitFormat": false
 }
 ```
 
@@ -225,6 +227,8 @@ Example file:
 | `signedCommit`          | `bool`                | `false`                            | Sign commits with GPG (client mode only)                                                                    |
 | `scopes`                | `string[]` \| `null`  | `null`                             | Predefined scope suggestions shown when `scopePrompt` is `true`                                             |
 | `enforceConvention`     | `bool`                | `false`                            | Reject commits that don't start with a gitmoji when no interactive terminal is available (e.g. IDE commits) |
+| `showSemverBadge`       | `bool`                | `true`                             | Show the semver badge next to each gitmoji in the interactive picker, list, and search results              |
+| `normalizeCommitFormat` | `bool`                | `false`                            | Produce `emoji: title` (with colon) instead of `emoji title`, aligning with the conventional commit format  |
 
 ### Config resolution order
 
