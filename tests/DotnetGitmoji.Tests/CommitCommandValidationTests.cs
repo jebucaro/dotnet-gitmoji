@@ -202,7 +202,7 @@ public class CommitCommandValidationTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenEmojiFormatIsCode_ReachesGitCommitStep()
+    public async Task ExecuteAsync_WhenEmojiFormatIsCode_UsesCodePrefixInCommit()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { EmojiFormat = EmojiFormat.Code });
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
@@ -211,14 +211,16 @@ public class CommitCommandValidationTests
         var command = CreateCommand("fix something");
         var console = new FakeInMemoryConsole();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        await command.ExecuteAsync(console);
 
-        Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
+        await _gitService.Received(1).CommitAsync(
+            Arg.Is<string>(s => s.Contains(":art:") && !s.Contains("🎨")),
+            Arg.Any<string?>(),
+            false);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenCapitalizeTitleIsTrue_ReachesGitCommitStep()
+    public async Task ExecuteAsync_WhenCapitalizeTitleIsTrue_CapitalizesTitleInCommit()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { CapitalizeTitle = true });
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
@@ -227,10 +229,12 @@ public class CommitCommandValidationTests
         var command = CreateCommand("fix something");
         var console = new FakeInMemoryConsole();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        await command.ExecuteAsync(console);
 
-        Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
+        await _gitService.Received(1).CommitAsync(
+            Arg.Is<string>(s => s.Contains("Fix something")),
+            Arg.Any<string?>(),
+            false);
     }
 
     [Fact]
@@ -261,13 +265,14 @@ public class CommitCommandValidationTests
         var command = CreateCommand("fix something");
         var console = new FakeInMemoryConsole();
 
-        await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        await command.ExecuteAsync(console);
 
         _promptService.Received(1).AskMessage();
+        await _gitService.Received(1).CommitAsync(Arg.Any<string>(), "some body", false);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenSignedCommitIsTrue_ReachesGitCommitStep()
+    public async Task ExecuteAsync_WhenSignedCommitIsTrue_PassesSignedFlagToCommit()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { SignedCommit = true });
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
@@ -276,10 +281,9 @@ public class CommitCommandValidationTests
         var command = CreateCommand("fix something");
         var console = new FakeInMemoryConsole();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        await command.ExecuteAsync(console);
 
-        Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
+        await _gitService.Received(1).CommitAsync(Arg.Any<string>(), Arg.Any<string?>(), true);
     }
 
     [Fact]

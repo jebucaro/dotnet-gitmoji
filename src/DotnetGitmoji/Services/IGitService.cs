@@ -19,4 +19,8 @@ public interface IGitService
     Task RemoveHookDirectAsync();
     Task StageAllAsync();
     Task<bool> HasStagedChangesAsync();
+
+    /// <summary>Runs <c>git commit</c> with the given subject/body. Returns git's stdout on success;
+    /// throws <see cref="InvalidOperationException"/> if the commit fails.</summary>
+    Task<string> CommitAsync(string subject, string? body, bool signed);
 }

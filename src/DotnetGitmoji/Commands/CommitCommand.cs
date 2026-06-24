@@ -2,8 +2,6 @@ using System.Text.RegularExpressions;
 using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
-using CliWrap;
-using CliWrap.Buffered;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
 
@@ -95,7 +93,18 @@ public sealed partial class CommitCommand : ICommand
         if (body is null && config.MessagePrompt)
             body = _promptService.AskMessage();
 
-        await ExecuteCommitAsync(console, BuildGitArgs(commitMessage, body, config));
+        string commitOutput;
+        try
+        {
+            commitOutput = await _gitService.CommitAsync(commitMessage, body, config.SignedCommit);
+        }
+        catch (Exception ex)
+        {
+            throw new CommandException($"Failed to execute 'git commit': {ex.Message}", 1);
+        }
+
+        if (!string.IsNullOrWhiteSpace(commitOutput))
+            await console.Output.WriteAsync(commitOutput);
     }
 
     private void ValidateCommandOptions(ToolConfiguration config)
@@ -157,54 +166,5 @@ public sealed partial class CommitCommand : ICommand
             var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
             return $"{prefix} {scopePart}{title}";
         }
-    }
-
-    private static List<string> BuildGitArgs(string commitMessage, string? body, ToolConfiguration config)
-    {
-        var args = new List<string> { "commit" };
-        if (config.SignedCommit)
-            args.Add("-S");
-        args.AddRange(["-m", commitMessage]);
-        if (!string.IsNullOrWhiteSpace(body))
-        {
-            args.Add("-m");
-            args.Add(body);
-        }
-
-        return args;
-    }
-
-    private static async Task ExecuteCommitAsync(IConsole console, List<string> args)
-    {
-        BufferedCommandResult result;
-        try
-        {
-            result = await Cli.Wrap("git")
-                .WithArguments(args)
-                .WithValidation(CommandResultValidation.None)
-                .ExecuteBufferedAsync();
-        }
-        catch (Exception ex)
-        {
-            throw new CommandException($"Failed to execute 'git commit': {ex.Message}", 1);
-        }
-
-        if (result.ExitCode != 0)
-        {
-            var error = string.IsNullOrWhiteSpace(result.StandardError)
-                ? result.StandardOutput.Trim()
-                : result.StandardError.Trim();
-
-            throw new CommandException(
-                string.IsNullOrWhiteSpace(error)
-                    ? $"git commit failed with exit code {result.ExitCode}."
-                    : $"git commit failed with exit code {result.ExitCode}: {error}",
-                1);
-        }
-
-        if (!string.IsNullOrWhiteSpace(result.StandardOutput))
-            await console.Output.WriteAsync(result.StandardOutput);
-        if (!string.IsNullOrWhiteSpace(result.StandardError))
-            await console.Error.WriteAsync(result.StandardError);
     }
 }

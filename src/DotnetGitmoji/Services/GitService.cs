@@ -245,6 +245,36 @@ public sealed class GitService : IGitService
                 : $"Failed to check staged changes (exit code {result.ExitCode}): {error}");
     }
 
+    public async Task<string> CommitAsync(string subject, string? body, bool signed)
+    {
+        var args = new List<string> { "commit" };
+        if (signed)
+            args.Add("-S");
+        args.AddRange(["-m", subject]);
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            args.Add("-m");
+            args.Add(body);
+        }
+
+        var result = await Cli.Wrap("git")
+            .WithArguments(args)
+            .WithValidation(CommandResultValidation.None)
+            .ExecuteBufferedAsync();
+
+        if (result.ExitCode == 0)
+            return result.StandardOutput;
+
+        var error = string.IsNullOrWhiteSpace(result.StandardError)
+            ? result.StandardOutput.Trim()
+            : result.StandardError.Trim();
+
+        throw new InvalidOperationException(
+            string.IsNullOrWhiteSpace(error)
+                ? $"git commit failed with exit code {result.ExitCode}."
+                : $"git commit failed with exit code {result.ExitCode}: {error}");
+    }
+
     private static async Task RunDotnetHuskyAddAsync(string repoRoot, string hookCommand)
     {
         var result = await Cli.Wrap("dotnet")
