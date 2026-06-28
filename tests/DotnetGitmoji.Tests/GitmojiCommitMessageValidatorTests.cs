@@ -9,15 +9,15 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenMessageStartsWithEmoji_ReturnsMatch()
     {
-        var gitmojis = new[]
+        Gitmoji[] gitmojis = new[]
         {
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null),
             new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
         };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent("🎨  Improve structure", null), gitmojis);
+        ValidationResult result = validator.Validate(new CommitMessageContent("🎨  Improve structure", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal(gitmojis[0], result.MatchedGitmoji);
@@ -27,14 +27,11 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenMessageStartsWithShortcode_ReturnsMatch()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
+        ValidationResult result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal(gitmojis[0], result.MatchedGitmoji);
@@ -44,14 +41,12 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenMessageStartsWithVariationSelectorEmoji_ReturnsMatch()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("⚡️", "entity", ":zap:", "desc", "zap", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("⚡️", "entity", ":zap:", "desc", "zap", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent("⚡️ Improve performance", null), gitmojis);
+        ValidationResult result =
+            validator.Validate(new CommitMessageContent("⚡️ Improve performance", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal(gitmojis[0], result.MatchedGitmoji);
@@ -61,14 +56,11 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenShortcodeContainsDigit_ReturnsMatch()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("✏️", "entity", ":pencil2:", "desc", "pencil2", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("✏️", "entity", ":pencil2:", "desc", "pencil2", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent(":pencil2: Fix typo", null), gitmojis);
+        ValidationResult result = validator.Validate(new CommitMessageContent(":pencil2: Fix typo", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal(gitmojis[0], result.MatchedGitmoji);
@@ -78,14 +70,11 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenNoMatch_ReturnsInvalid()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent("Fix issue", null), gitmojis);
+        ValidationResult result = validator.Validate(new CommitMessageContent("Fix issue", null), gitmojis);
 
         Assert.False(result.IsValid);
         Assert.Null(result.MatchedGitmoji);
@@ -95,14 +84,12 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenShortcodeFollowedByScope_ExtractsScopeAndTitle()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent(":bug: (auth): Fix issue", null), gitmojis);
+        ValidationResult result =
+            validator.Validate(new CommitMessageContent(":bug: (auth): Fix issue", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal("auth", result.ParsedScope);
@@ -112,14 +99,11 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenEmojiFollowedByScope_ExtractsScopeAndTitle()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent("🐛 (api): Fix issue", null), gitmojis);
+        ValidationResult result = validator.Validate(new CommitMessageContent("🐛 (api): Fix issue", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal("api", result.ParsedScope);
@@ -129,14 +113,11 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenNoScope_ParsedScopeIsNull()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
+        ValidationResult result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Null(result.ParsedScope);
@@ -146,14 +127,12 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenBodyProvided_PassesThroughBody()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent(":bug: Fix issue", "Some body"), gitmojis);
+        ValidationResult result =
+            validator.Validate(new CommitMessageContent(":bug: Fix issue", "Some body"), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Equal("Some body", result.ParsedBody);
@@ -162,14 +141,11 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenBodyIsNull_ParsedBodyIsNull()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
+        ValidationResult result = validator.Validate(new CommitMessageContent(":bug: Fix issue", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Null(result.ParsedBody);
@@ -178,14 +154,12 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenEmojiNormalizedFormat_StripsSeparatorFromTitle()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent("🐛: Fix null ref crash", null), gitmojis);
+        ValidationResult result =
+            validator.Validate(new CommitMessageContent("🐛: Fix null ref crash", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Null(result.ParsedScope);
@@ -195,14 +169,12 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenShortcodeNormalizedFormat_StripsSeparatorFromTitle()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent(":bug:: Fix null ref crash", null), gitmojis);
+        ValidationResult result =
+            validator.Validate(new CommitMessageContent(":bug:: Fix null ref crash", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Null(result.ParsedScope);
@@ -212,14 +184,11 @@ public class GitmojiCommitMessageValidatorTests
     [Fact]
     public void Validate_WhenLegacyFormatNoScope_TitleUnchanged()
     {
-        var gitmojis = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null)
-        };
+        Gitmoji[] gitmojis = new[] { new Gitmoji("🐛", "entity", ":bug:", "desc", "bug", null) };
 
-        var validator = new GitmojiCommitMessageValidator();
+        GitmojiCommitMessageValidator validator = new();
 
-        var result = validator.Validate(new CommitMessageContent("🐛 Fix null ref crash", null), gitmojis);
+        ValidationResult result = validator.Validate(new CommitMessageContent("🐛 Fix null ref crash", null), gitmojis);
 
         Assert.True(result.IsValid);
         Assert.Null(result.ParsedScope);

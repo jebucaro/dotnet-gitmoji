@@ -8,8 +8,7 @@ public sealed class ConfigurationService : IConfigurationService
 {
     private static readonly JsonSerializerOptions ReadOptions = new()
     {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
+        PropertyNameCaseInsensitive = true, Converters = { new JsonStringEnumConverter() }
     };
 
     private static readonly JsonSerializerOptions WriteOptions = new()
@@ -28,11 +27,17 @@ public sealed class ConfigurationService : IConfigurationService
 
     public async Task<ToolConfiguration> LoadAsync()
     {
-        var localPath = await FindLocalConfigPathAsync();
-        if (localPath is not null) return await LoadFromPathAsync(localPath);
+        string? localPath = await FindLocalConfigPathAsync();
+        if (localPath is not null)
+        {
+            return await LoadFromPathAsync(localPath);
+        }
 
-        var globalConfigPath = DotnetGitmojiPaths.GlobalConfigPath;
-        if (File.Exists(globalConfigPath)) return await LoadFromPathAsync(globalConfigPath);
+        string globalConfigPath = DotnetGitmojiPaths.GlobalConfigPath;
+        if (File.Exists(globalConfigPath))
+        {
+            return await LoadFromPathAsync(globalConfigPath);
+        }
 
         return new ToolConfiguration();
     }
@@ -41,8 +46,8 @@ public sealed class ConfigurationService : IConfigurationService
     {
         try
         {
-            var repoRoot = await _gitService.GetRepositoryRootAsync();
-            var configPath = Path.Combine(repoRoot, ".gitmojirc.json");
+            string repoRoot = await _gitService.GetRepositoryRootAsync();
+            string configPath = Path.Combine(repoRoot, ".gitmojirc.json");
             return File.Exists(configPath) ? configPath : null;
         }
         catch
@@ -57,8 +62,11 @@ public sealed class ConfigurationService : IConfigurationService
 
         string savePath;
         if (target == ConfigSaveTarget.Global)
+        {
             savePath = DotnetGitmojiPaths.GlobalConfigPath;
+        }
         else
+        {
             try
             {
                 savePath = Path.Combine(await _gitService.GetRepositoryRootAsync(), ".gitmojirc.json");
@@ -67,13 +75,16 @@ public sealed class ConfigurationService : IConfigurationService
             {
                 savePath = DotnetGitmojiPaths.GlobalConfigPath; // not in a git repo
             }
+        }
 
         try
         {
             if (savePath == DotnetGitmojiPaths.GlobalConfigPath)
+            {
                 Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            }
 
-            await using var stream = File.Create(savePath);
+            await using FileStream stream = File.Create(savePath);
             await JsonSerializer.SerializeAsync(stream, config, WriteOptions);
         }
         catch (UnauthorizedAccessException)
@@ -87,12 +98,15 @@ public sealed class ConfigurationService : IConfigurationService
 
     public async Task<string?> CreateRepoConfigAsync()
     {
-        var repoRoot = await _gitService.GetRepositoryRootAsync();
-        var configPath = Path.Combine(repoRoot, ".gitmojirc.json");
+        string repoRoot = await _gitService.GetRepositoryRootAsync();
+        string configPath = Path.Combine(repoRoot, ".gitmojirc.json");
 
-        if (File.Exists(configPath)) return null;
+        if (File.Exists(configPath))
+        {
+            return null;
+        }
 
-        await using var stream = File.Create(configPath);
+        await using FileStream stream = File.Create(configPath);
         await JsonSerializer.SerializeAsync(stream, new ToolConfiguration(), WriteOptions);
         return configPath;
     }
@@ -101,10 +115,10 @@ public sealed class ConfigurationService : IConfigurationService
     {
         try
         {
-            await using var stream = File.OpenRead(path);
-            var config = await JsonSerializer.DeserializeAsync<ToolConfiguration>(stream, ReadOptions)
-                         ?? new ToolConfiguration();
-            var defaults = new ToolConfiguration();
+            await using FileStream stream = File.OpenRead(path);
+            ToolConfiguration config = await JsonSerializer.DeserializeAsync<ToolConfiguration>(stream, ReadOptions)
+                                       ?? new ToolConfiguration();
+            ToolConfiguration defaults = new();
 
             if (config.MaxTitleLength is <= 0)
             {
@@ -113,8 +127,12 @@ public sealed class ConfigurationService : IConfigurationService
                 config.MaxTitleLength = defaults.MaxTitleLength;
             }
 
-            if (Uri.TryCreate(config.GitmojisUrl, UriKind.Absolute, out var uri)
-                && uri.Scheme == Uri.UriSchemeHttps) return config;
+            if (Uri.TryCreate(config.GitmojisUrl, UriKind.Absolute, out Uri? uri)
+                && uri.Scheme == Uri.UriSchemeHttps)
+            {
+                return config;
+            }
+
             await Console.Error.WriteLineAsync(
                 $"Warning: Invalid GitmojisUrl in config at {path}, using default.");
             config.GitmojisUrl = defaults.GitmojisUrl;

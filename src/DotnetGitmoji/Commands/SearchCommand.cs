@@ -1,6 +1,7 @@
 using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
+using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
 using Spectre.Console;
 
@@ -22,9 +23,9 @@ public sealed partial class SearchCommand : ICommand
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        var results = await _gitmojiProvider.SearchAsync(Keyword);
+        IReadOnlyList<Gitmoji> results = await _gitmojiProvider.SearchAsync(Keyword);
 
-        var escapedKeyword = Markup.Escape(Keyword);
+        string escapedKeyword = Markup.Escape(Keyword);
 
         if (results.Count == 0)
         {
@@ -32,16 +33,18 @@ public sealed partial class SearchCommand : ICommand
             return;
         }
 
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Simple)
             .AddColumn("Emoji")
             .AddColumn("Code")
             .AddColumn("Description")
             .AddColumn("Semver");
 
-        foreach (var g in results)
+        foreach (Gitmoji g in results)
+        {
             table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description),
                 new Markup(FormatSemver(g.Semver)));
+        }
 
         AnsiConsole.MarkupLine($"[grey]Found {results.Count} gitmoji(s) matching '[white]{escapedKeyword}[/]':[/]");
         AnsiConsole.Write(table);

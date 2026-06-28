@@ -33,15 +33,18 @@ public sealed class GitmojiProvider : IGitmojiProvider
     {
         try
         {
-            var cached = await LoadFromCacheAsync();
-            if (cached.Gitmojis?.Length >= MinValidGitmojiCount) return cached.Gitmojis;
+            GitmojiResponse cached = await LoadFromCacheAsync();
+            if (cached.Gitmojis?.Length >= MinValidGitmojiCount)
+            {
+                return cached.Gitmojis;
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             // Cache missing or corrupted; fall through to next fallback.
         }
 
-        var fetched = await TryFetchFromApiAsync();
+        GitmojiResponse? fetched = await TryFetchFromApiAsync();
         if (fetched?.Gitmojis?.Length > 0)
         {
             await TrySaveToCacheAsync(fetched);
@@ -53,7 +56,7 @@ public sealed class GitmojiProvider : IGitmojiProvider
 
     public async Task<IReadOnlyList<Gitmoji>> ForceRefreshAsync()
     {
-        var fetched = await TryFetchFromApiAsync();
+        GitmojiResponse? fetched = await TryFetchFromApiAsync();
         if (fetched?.Gitmojis?.Length > 0)
         {
             await TrySaveToCacheAsync(fetched);
@@ -65,14 +68,14 @@ public sealed class GitmojiProvider : IGitmojiProvider
 
     public async Task<IReadOnlyList<Gitmoji>> SearchAsync(string keyword)
     {
-        var all = await GetAllAsync();
+        IReadOnlyList<Gitmoji> all = await GetAllAsync();
         return _fuzzyMatcher.RankGitmojis(all, keyword);
     }
 
     private async Task<GitmojiResponse> LoadFromCacheAsync()
     {
-        await using var stream = File.OpenRead(_cachePath);
-        var response = await JsonSerializer.DeserializeAsync<GitmojiResponse>(stream, JsonOptions);
+        await using FileStream stream = File.OpenRead(_cachePath);
+        GitmojiResponse? response = await JsonSerializer.DeserializeAsync<GitmojiResponse>(stream, JsonOptions);
         return response ?? new GitmojiResponse(Array.Empty<Gitmoji>());
     }
 
@@ -81,7 +84,7 @@ public sealed class GitmojiProvider : IGitmojiProvider
         try
         {
             Directory.CreateDirectory(_cacheDirectory);
-            await using var stream = File.Create(_cachePath);
+            await using FileStream stream = File.Create(_cachePath);
             await JsonSerializer.SerializeAsync(stream, response, JsonOptions);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -94,17 +97,22 @@ public sealed class GitmojiProvider : IGitmojiProvider
     {
         try
         {
-            if (!Uri.TryCreate(_config.GitmojisUrl, UriKind.Absolute, out var uri) || uri.Scheme != "https")
+            if (!Uri.TryCreate(_config.GitmojisUrl, UriKind.Absolute, out Uri? uri) || uri.Scheme != "https")
+            {
                 return null;
+            }
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
+            HttpResponseMessage response =
+                await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cts.Token);
             response.EnsureSuccessStatusCode();
 
             if (response.Content.Headers.ContentLength > 1_048_576) // 1 MB
+            {
                 return null;
+            }
 
-            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+            await using Stream stream = await response.Content.ReadAsStreamAsync(cts.Token);
             return await JsonSerializer.DeserializeAsync<GitmojiResponse>(stream, JsonOptions, cts.Token);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
@@ -115,11 +123,11 @@ public sealed class GitmojiProvider : IGitmojiProvider
 
     private static GitmojiResponse LoadEmbeddedDefault()
     {
-        var assembly = Assembly.GetExecutingAssembly();
-        using var stream = assembly.GetManifestResourceStream(EmbeddedResourceName)
-                           ?? throw new InvalidOperationException(
-                               "Embedded gitmoji list not found. " +
-                               $"Available: [{string.Join(", ", assembly.GetManifestResourceNames())}]");
+        Assembly assembly = Assembly.GetExecutingAssembly();
+        using Stream stream = assembly.GetManifestResourceStream(EmbeddedResourceName)
+                              ?? throw new InvalidOperationException(
+                                  "Embedded gitmoji list not found. " +
+                                  $"Available: [{string.Join(", ", assembly.GetManifestResourceNames())}]");
 
         return JsonSerializer.Deserialize<GitmojiResponse>(stream, JsonOptions)
                ?? throw new InvalidOperationException("Embedded gitmoji list could not be deserialized.");

@@ -15,19 +15,23 @@ public sealed class GitmojiFuzzyMatcher : IGitmojiFuzzyMatcher
         ArgumentNullException.ThrowIfNull(gitmojis);
 
         if (string.IsNullOrWhiteSpace(query))
+        {
             return gitmojis;
+        }
 
-        var normalizedQuery = Normalize(query);
+        string normalizedQuery = Normalize(query);
         if (normalizedQuery.Length == 0)
+        {
             return gitmojis;
+        }
 
         return gitmojis
             .Select(gitmoji =>
             {
-                var score = ScoreGitmoji(gitmoji, normalizedQuery);
-                var strongMatch = IsStrongLiteralMatch(gitmoji.Name, normalizedQuery)
-                                  || IsStrongLiteralMatch(gitmoji.Description, normalizedQuery)
-                                  || IsStrongLiteralMatch(gitmoji.Code, normalizedQuery);
+                double score = ScoreGitmoji(gitmoji, normalizedQuery);
+                bool strongMatch = IsStrongLiteralMatch(gitmoji.Name, normalizedQuery)
+                                   || IsStrongLiteralMatch(gitmoji.Description, normalizedQuery)
+                                   || IsStrongLiteralMatch(gitmoji.Code, normalizedQuery);
                 return new RankedItem<Gitmoji>(gitmoji, score, strongMatch);
             })
             .Where(result => result.StrongMatch || result.Score >= GitmojiThreshold)
@@ -43,17 +47,21 @@ public sealed class GitmojiFuzzyMatcher : IGitmojiFuzzyMatcher
         ArgumentNullException.ThrowIfNull(scopes);
 
         if (string.IsNullOrWhiteSpace(query))
+        {
             return scopes;
+        }
 
-        var normalizedQuery = Normalize(query);
+        string normalizedQuery = Normalize(query);
         if (normalizedQuery.Length == 0)
+        {
             return scopes;
+        }
 
         return scopes
             .Select(scope =>
             {
-                var score = ScoreField(scope, normalizedQuery);
-                var strongMatch = IsStrongLiteralMatch(scope, normalizedQuery);
+                double score = ScoreField(scope, normalizedQuery);
+                bool strongMatch = IsStrongLiteralMatch(scope, normalizedQuery);
                 return new RankedItem<string>(scope, score, strongMatch);
             })
             .Where(result => result.StrongMatch || result.Score >= ScopeThreshold)
@@ -66,95 +74,119 @@ public sealed class GitmojiFuzzyMatcher : IGitmojiFuzzyMatcher
 
     private static double ScoreGitmoji(Gitmoji gitmoji, string normalizedQuery)
     {
-        var descriptionScore = ScoreField(gitmoji.Description, normalizedQuery);
-        var nameScore = ScoreField(gitmoji.Name, normalizedQuery);
-        var codeScore = ScoreField(gitmoji.Code, normalizedQuery);
+        double descriptionScore = ScoreField(gitmoji.Description, normalizedQuery);
+        double nameScore = ScoreField(gitmoji.Name, normalizedQuery);
+        double codeScore = ScoreField(gitmoji.Code, normalizedQuery);
 
-        var weightedScore = descriptionScore * DescriptionWeight + nameScore * NameWeight;
+        double weightedScore = (descriptionScore * DescriptionWeight) + (nameScore * NameWeight);
 
-        var normalizedCode = Normalize(gitmoji.Code);
+        string normalizedCode = Normalize(gitmoji.Code);
         if (normalizedCode.Equals(normalizedQuery, StringComparison.Ordinal))
+        {
             return 1.0;
+        }
 
         if (normalizedCode.StartsWith(normalizedQuery, StringComparison.Ordinal))
+        {
             weightedScore = Math.Max(weightedScore, 0.90);
+        }
         else if (normalizedCode.Contains(normalizedQuery, StringComparison.Ordinal))
+        {
             weightedScore = Math.Max(weightedScore, 0.82);
+        }
         else
+        {
             weightedScore = Math.Max(weightedScore, codeScore * 0.72);
+        }
 
         if (Normalize(gitmoji.Name).Equals(normalizedQuery, StringComparison.Ordinal))
+        {
             weightedScore = Math.Max(weightedScore, 0.96);
+        }
 
         return Math.Clamp(weightedScore, 0.0, 1.0);
     }
 
     private static double ScoreField(string value, string normalizedQuery)
     {
-        var normalizedValue = Normalize(value);
+        string normalizedValue = Normalize(value);
         if (normalizedValue.Length == 0 || normalizedQuery.Length == 0)
-            return 0.0;
-
-        if (normalizedValue.Equals(normalizedQuery, StringComparison.Ordinal))
-            return 1.0;
-
-        if (normalizedValue.StartsWith(normalizedQuery, StringComparison.Ordinal))
-            return 0.95;
-
-        var containsIndex = normalizedValue.IndexOf(normalizedQuery, StringComparison.Ordinal);
-        if (containsIndex >= 0)
         {
-            var positionBonus = 1.0 - (double)containsIndex / Math.Max(1, normalizedValue.Length - 1);
-            var lengthBonus = Math.Min(1.0, (double)normalizedQuery.Length / normalizedValue.Length);
-            return Math.Clamp(0.80 + positionBonus * 0.12 + lengthBonus * 0.08, 0.0, 1.0);
+            return 0.0;
         }
 
-        var tokenScore = ScoreByTokens(normalizedValue, normalizedQuery);
-        var subsequenceScore = ScoreBySubsequence(normalizedValue, normalizedQuery);
+        if (normalizedValue.Equals(normalizedQuery, StringComparison.Ordinal))
+        {
+            return 1.0;
+        }
+
+        if (normalizedValue.StartsWith(normalizedQuery, StringComparison.Ordinal))
+        {
+            return 0.95;
+        }
+
+        int containsIndex = normalizedValue.IndexOf(normalizedQuery, StringComparison.Ordinal);
+        if (containsIndex >= 0)
+        {
+            double positionBonus = 1.0 - ((double)containsIndex / Math.Max(1, normalizedValue.Length - 1));
+            double lengthBonus = Math.Min(1.0, (double)normalizedQuery.Length / normalizedValue.Length);
+            return Math.Clamp(0.80 + (positionBonus * 0.12) + (lengthBonus * 0.08), 0.0, 1.0);
+        }
+
+        double tokenScore = ScoreByTokens(normalizedValue, normalizedQuery);
+        double subsequenceScore = ScoreBySubsequence(normalizedValue, normalizedQuery);
         return Math.Clamp(Math.Max(tokenScore, subsequenceScore), 0.0, 1.0);
     }
 
     private static double ScoreByTokens(string value, string query)
     {
-        var tokens = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        string[] tokens = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (tokens.Length == 0)
-            return 0.0;
-
-        var score = 0.0;
-        foreach (var token in tokens)
         {
-            var containsIndex = value.IndexOf(token, StringComparison.Ordinal);
+            return 0.0;
+        }
+
+        double score = 0.0;
+        foreach (string token in tokens)
+        {
+            int containsIndex = value.IndexOf(token, StringComparison.Ordinal);
             if (containsIndex >= 0)
             {
-                var positionBonus = 1.0 - (double)containsIndex / Math.Max(1, value.Length - 1);
-                score += 0.78 + positionBonus * 0.10;
+                double positionBonus = 1.0 - ((double)containsIndex / Math.Max(1, value.Length - 1));
+                score += 0.78 + (positionBonus * 0.10);
                 continue;
             }
 
             score += ScoreBySubsequence(value, token) * 0.85;
         }
 
-        var average = score / tokens.Length;
+        double average = score / tokens.Length;
         return Math.Clamp(average * 0.85, 0.0, 1.0);
     }
 
     private static double ScoreBySubsequence(string value, string query)
     {
         if (value.Length == 0 || query.Length == 0)
+        {
             return 0.0;
+        }
 
-        var firstMatch = -1;
-        var lastMatch = -1;
-        var queryIndex = 0;
-        var matches = 0;
+        int firstMatch = -1;
+        int lastMatch = -1;
+        int queryIndex = 0;
+        int matches = 0;
 
-        for (var valueIndex = 0; valueIndex < value.Length && queryIndex < query.Length; valueIndex++)
+        for (int valueIndex = 0; valueIndex < value.Length && queryIndex < query.Length; valueIndex++)
         {
             if (value[valueIndex] != query[queryIndex])
+            {
                 continue;
+            }
 
             if (firstMatch < 0)
+            {
                 firstMatch = valueIndex;
+            }
 
             lastMatch = valueIndex;
             matches++;
@@ -162,24 +194,30 @@ public sealed class GitmojiFuzzyMatcher : IGitmojiFuzzyMatcher
         }
 
         if (matches == 0)
+        {
             return 0.0;
+        }
 
-        var coverage = (double)matches / query.Length;
+        double coverage = (double)matches / query.Length;
         if (coverage < 0.4)
+        {
             return 0.0;
+        }
 
         if (matches < query.Length)
+        {
             return coverage * 0.42;
+        }
 
-        var span = Math.Max(1, lastMatch - firstMatch + 1);
-        var compactness = (double)query.Length / span;
-        var density = (double)query.Length / value.Length;
-        return Math.Clamp(0.44 + compactness * 0.36 + density * 0.20, 0.0, 1.0);
+        int span = Math.Max(1, lastMatch - firstMatch + 1);
+        double compactness = (double)query.Length / span;
+        double density = (double)query.Length / value.Length;
+        return Math.Clamp(0.44 + (compactness * 0.36) + (density * 0.20), 0.0, 1.0);
     }
 
     private static bool IsStrongLiteralMatch(string value, string normalizedQuery)
     {
-        var normalizedValue = Normalize(value);
+        string normalizedValue = Normalize(value);
         return normalizedValue.Equals(normalizedQuery, StringComparison.Ordinal)
                || normalizedValue.Contains(normalizedQuery, StringComparison.Ordinal);
     }
@@ -187,13 +225,15 @@ public sealed class GitmojiFuzzyMatcher : IGitmojiFuzzyMatcher
     private static string Normalize(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
+        {
             return string.Empty;
+        }
 
-        var source = value.Trim().ToLowerInvariant();
-        var normalized = new StringBuilder(source.Length);
-        var previousWasWhitespace = false;
+        string source = value.Trim().ToLowerInvariant();
+        StringBuilder normalized = new(source.Length);
+        bool previousWasWhitespace = false;
 
-        foreach (var character in source)
+        foreach (char character in source)
         {
             if (char.IsLetterOrDigit(character) || character is ':' or '_' or '-' or '/')
             {

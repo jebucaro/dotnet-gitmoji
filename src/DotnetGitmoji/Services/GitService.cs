@@ -20,13 +20,15 @@ public sealed class GitService : IGitService
 
     public async Task<string> GetRepositoryRootAsync()
     {
-        var result = await Cli.Wrap("git")
+        BufferedCommandResult result = await Cli.Wrap("git")
             .WithArguments(["rev-parse", "--show-toplevel"])
             .WithValidation(CommandResultValidation.None)
             .ExecuteBufferedAsync();
 
         if (result.ExitCode == 0)
+        {
             return result.StandardOutput.Trim();
+        }
 
         throw new InvalidOperationException(
             "Not a git repository. Run 'git init' to initialize one.");
@@ -34,39 +36,48 @@ public sealed class GitService : IGitService
 
     public async Task<string?> GetConfigValueAsync(string key)
     {
-        var result = await Cli.Wrap("git")
+        BufferedCommandResult result = await Cli.Wrap("git")
             .WithArguments(["config", "--get", key])
             .WithValidation(CommandResultValidation.None)
             .ExecuteBufferedAsync();
 
         if (result.ExitCode == 0)
         {
-            var value = result.StandardOutput.Trim();
+            string value = result.StandardOutput.Trim();
             return string.IsNullOrWhiteSpace(value) ? null : value;
         }
 
-        if (result.ExitCode == 1) return null;
+        if (result.ExitCode == 1)
+        {
+            return null;
+        }
 
-        var error = result.StandardError.Trim();
+        string error = result.StandardError.Trim();
         throw new InvalidOperationException(
             $"git config --get {key} failed with exit code {result.ExitCode}{(string.IsNullOrWhiteSpace(error) ? string.Empty : $": {error}")}");
     }
 
     public async Task<bool> IsHookInstalledAsync()
     {
-        var repoRoot = await GetRepositoryRootAsync();
-        var hookPaths = new[]
+        string repoRoot = await GetRepositoryRootAsync();
+        string[] hookPaths = new[]
         {
             Path.Combine(repoRoot, HuskyDirectoryName, PrepareCommitMessageHookName),
             Path.Combine(repoRoot, ".git", GitHooksSubdirectory, PrepareCommitMessageHookName)
         };
 
-        foreach (var hookPath in hookPaths)
+        foreach (string hookPath in hookPaths)
         {
-            if (!File.Exists(hookPath)) continue;
+            if (!File.Exists(hookPath))
+            {
+                continue;
+            }
 
-            var content = await File.ReadAllTextAsync(hookPath);
-            if (ContainsActiveDotnetGitmojiInvocation(content)) return true;
+            string content = await File.ReadAllTextAsync(hookPath);
+            if (ContainsActiveDotnetGitmojiInvocation(content))
+            {
+                return true;
+            }
         }
 
         return false;
@@ -74,17 +85,23 @@ public sealed class GitService : IGitService
 
     public async Task<HuskyInstallKind> DetectHuskyKindAsync()
     {
-        var repoRoot = await GetRepositoryRootAsync();
-        var huskyDir = Path.Combine(repoRoot, HuskyDirectoryName);
+        string repoRoot = await GetRepositoryRootAsync();
+        string huskyDir = Path.Combine(repoRoot, HuskyDirectoryName);
 
         if (!Directory.Exists(huskyDir))
+        {
             return HuskyInstallKind.None;
+        }
 
         if (File.Exists(Path.Combine(huskyDir, "task-runner.json")))
+        {
             return HuskyInstallKind.HuskyNetTaskRunner;
+        }
 
         if (File.Exists(Path.Combine(huskyDir, "_", "husky.sh")))
+        {
             return HuskyInstallKind.JsHusky;
+        }
 
         return HuskyInstallKind.HuskyNetShell;
     }
@@ -96,16 +113,16 @@ public sealed class GitService : IGitService
 
     public async Task InstallHuskyNetShellHookAsync()
     {
-        var repoRoot = await GetRepositoryRootAsync();
-        var command = await BuildShellHookCommandAsync();
+        string repoRoot = await GetRepositoryRootAsync();
+        string command = await BuildShellHookCommandAsync();
         await RunDotnetHuskyAddAsync(repoRoot, command);
     }
 
     public async Task InstallHuskyNetTaskRunnerHookAsync()
     {
-        var repoRoot = await GetRepositoryRootAsync();
-        var taskRunnerPath = Path.Combine(repoRoot, HuskyDirectoryName, "task-runner.json");
-        var isLocal = await IsLocalToolManifestAsync();
+        string repoRoot = await GetRepositoryRootAsync();
+        string taskRunnerPath = Path.Combine(repoRoot, HuskyDirectoryName, "task-runner.json");
+        bool isLocal = await IsLocalToolManifestAsync();
 
         await EnsureTaskRunnerContainsDotnetGitmojiTaskAsync(taskRunnerPath, isLocal);
         await RunDotnetHuskyAddAsync(repoRoot, TaskRunnerHookCommand);
@@ -113,8 +130,8 @@ public sealed class GitService : IGitService
 
     public async Task InstallHookDirectAsync()
     {
-        var repoRoot = await GetRepositoryRootAsync();
-        var hooksDir = Path.Combine(repoRoot, ".git", GitHooksSubdirectory);
+        string repoRoot = await GetRepositoryRootAsync();
+        string hooksDir = Path.Combine(repoRoot, ".git", GitHooksSubdirectory);
 
         try
         {
@@ -125,9 +142,9 @@ public sealed class GitService : IGitService
             throw new InvalidOperationException($"Could not create hooks directory at '{hooksDir}': {ex.Message}");
         }
 
-        var hookPath = Path.Combine(hooksDir, PrepareCommitMessageHookName);
-        var command = await BuildShellHookCommandAsync();
-        var script = $"#!/bin/sh\nexec < /dev/tty\n{command}\n";
+        string hookPath = Path.Combine(hooksDir, PrepareCommitMessageHookName);
+        string command = await BuildShellHookCommandAsync();
+        string script = $"#!/bin/sh\nexec < /dev/tty\n{command}\n";
 
         try
         {
@@ -140,14 +157,14 @@ public sealed class GitService : IGitService
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            var chmodResult = await Cli.Wrap("chmod")
+            BufferedCommandResult chmodResult = await Cli.Wrap("chmod")
                 .WithArguments(["+x", hookPath])
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteBufferedAsync();
 
             if (chmodResult.ExitCode != 0)
             {
-                var error = string.IsNullOrWhiteSpace(chmodResult.StandardError)
+                string error = string.IsNullOrWhiteSpace(chmodResult.StandardError)
                     ? chmodResult.StandardOutput.Trim()
                     : chmodResult.StandardError.Trim();
                 throw new InvalidOperationException(
@@ -160,20 +177,25 @@ public sealed class GitService : IGitService
 
     public async Task<string?> FindHookFileAsync()
     {
-        var repoRoot = await GetRepositoryRootAsync();
-        var hookPaths = new[]
+        string repoRoot = await GetRepositoryRootAsync();
+        string[] hookPaths = new[]
         {
             Path.Combine(repoRoot, HuskyDirectoryName, PrepareCommitMessageHookName),
             Path.Combine(repoRoot, ".git", GitHooksSubdirectory, PrepareCommitMessageHookName)
         };
 
-        foreach (var hookPath in hookPaths)
+        foreach (string hookPath in hookPaths)
         {
-            if (!File.Exists(hookPath)) continue;
+            if (!File.Exists(hookPath))
+            {
+                continue;
+            }
 
-            var content = await File.ReadAllTextAsync(hookPath);
+            string content = await File.ReadAllTextAsync(hookPath);
             if (ContainsActiveDotnetGitmojiInvocation(content))
+            {
                 return hookPath;
+            }
         }
 
         return null;
@@ -181,23 +203,31 @@ public sealed class GitService : IGitService
 
     public async Task RemoveHookDirectAsync()
     {
-        var repoRoot = await GetRepositoryRootAsync();
-        var hookPath = Path.Combine(repoRoot, ".git", GitHooksSubdirectory, PrepareCommitMessageHookName);
+        string repoRoot = await GetRepositoryRootAsync();
+        string hookPath = Path.Combine(repoRoot, ".git", GitHooksSubdirectory, PrepareCommitMessageHookName);
 
-        if (!File.Exists(hookPath)) return;
+        if (!File.Exists(hookPath))
+        {
+            return;
+        }
 
         try
         {
-            var content = await File.ReadAllTextAsync(hookPath);
-            var lines = content.Split('\n').ToList();
-            var filtered = lines.Where(l => !l.Contains(DotnetGitmojiTaskName, StringComparison.OrdinalIgnoreCase))
+            string content = await File.ReadAllTextAsync(hookPath);
+            List<string> lines = content.Split('\n').ToList();
+            List<string> filtered = lines
+                .Where(l => !l.Contains(DotnetGitmojiTaskName, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             // If only shebang or empty lines remain, delete the file
             if (filtered.All(l => string.IsNullOrWhiteSpace(l) || l.StartsWith("#!")))
+            {
                 File.Delete(hookPath);
+            }
             else
+            {
                 await File.WriteAllTextAsync(hookPath, string.Join('\n', filtered));
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -207,15 +237,17 @@ public sealed class GitService : IGitService
 
     public async Task StageAllAsync()
     {
-        var result = await Cli.Wrap("git")
+        BufferedCommandResult result = await Cli.Wrap("git")
             .WithArguments(["add", "."])
             .WithValidation(CommandResultValidation.None)
             .ExecuteBufferedAsync();
 
         if (result.ExitCode == 0)
+        {
             return;
+        }
 
-        var error = string.IsNullOrWhiteSpace(result.StandardError)
+        string error = string.IsNullOrWhiteSpace(result.StandardError)
             ? result.StandardOutput.Trim()
             : result.StandardError.Trim();
 
@@ -227,15 +259,17 @@ public sealed class GitService : IGitService
 
     public async Task<bool> HasStagedChangesAsync()
     {
-        var result = await Cli.Wrap("git")
+        BufferedCommandResult result = await Cli.Wrap("git")
             .WithArguments(["diff", "--cached", "--name-only"])
             .WithValidation(CommandResultValidation.None)
             .ExecuteBufferedAsync();
 
         if (result.ExitCode == 0)
+        {
             return !string.IsNullOrWhiteSpace(result.StandardOutput);
+        }
 
-        var error = string.IsNullOrWhiteSpace(result.StandardError)
+        string error = string.IsNullOrWhiteSpace(result.StandardError)
             ? result.StandardOutput.Trim()
             : result.StandardError.Trim();
 
@@ -247,9 +281,12 @@ public sealed class GitService : IGitService
 
     public async Task<string> CommitAsync(string subject, string? body, bool signed)
     {
-        var args = new List<string> { "commit" };
+        List<string> args = new() { "commit" };
         if (signed)
+        {
             args.Add("-S");
+        }
+
         args.AddRange(["-m", subject]);
         if (!string.IsNullOrWhiteSpace(body))
         {
@@ -257,15 +294,17 @@ public sealed class GitService : IGitService
             args.Add(body);
         }
 
-        var result = await Cli.Wrap("git")
+        BufferedCommandResult result = await Cli.Wrap("git")
             .WithArguments(args)
             .WithValidation(CommandResultValidation.None)
             .ExecuteBufferedAsync();
 
         if (result.ExitCode == 0)
+        {
             return result.StandardOutput;
+        }
 
-        var error = string.IsNullOrWhiteSpace(result.StandardError)
+        string error = string.IsNullOrWhiteSpace(result.StandardError)
             ? result.StandardOutput.Trim()
             : result.StandardError.Trim();
 
@@ -277,20 +316,22 @@ public sealed class GitService : IGitService
 
     private static async Task RunDotnetHuskyAddAsync(string repoRoot, string hookCommand)
     {
-        var result = await Cli.Wrap("dotnet")
+        BufferedCommandResult result = await Cli.Wrap("dotnet")
             .WithWorkingDirectory(repoRoot)
             .WithArguments(["husky", "add", PrepareCommitMessageHookName, "-c", hookCommand])
             .WithValidation(CommandResultValidation.None)
             .ExecuteBufferedAsync();
 
         if (result.ExitCode == 0)
+        {
             return;
+        }
 
-        var error = string.IsNullOrWhiteSpace(result.StandardError)
+        string error = string.IsNullOrWhiteSpace(result.StandardError)
             ? result.StandardOutput.Trim()
             : result.StandardError.Trim();
 
-        var message = string.IsNullOrWhiteSpace(error)
+        string message = string.IsNullOrWhiteSpace(error)
             ? $"Failed to run 'dotnet husky add {PrepareCommitMessageHookName}' (exit code {result.ExitCode}). Ensure Husky.Net is installed and available."
             : $"Failed to run 'dotnet husky add {PrepareCommitMessageHookName}'. Ensure Husky.Net is installed and available. Details: {error}";
 
@@ -299,25 +340,29 @@ public sealed class GitService : IGitService
 
     private async Task<bool> IsLocalToolManifestAsync()
     {
-        var repoRoot = await GetRepositoryRootAsync();
+        string repoRoot = await GetRepositoryRootAsync();
 
-        for (var directory = new DirectoryInfo(repoRoot); directory is not null; directory = directory.Parent)
+        for (DirectoryInfo? directory = new(repoRoot); directory is not null; directory = directory.Parent)
         {
-            var candidates = new[]
+            string[] candidates = new[]
             {
                 Path.Combine(directory.FullName, ".config", "dotnet-tools.json"),
                 Path.Combine(directory.FullName, "dotnet-tools.json")
             };
 
-            foreach (var manifestPath in candidates)
+            foreach (string manifestPath in candidates)
             {
                 if (!File.Exists(manifestPath))
+                {
                     continue;
+                }
 
-                var json = await File.ReadAllTextAsync(manifestPath);
-                var node = JsonNode.Parse(json);
+                string json = await File.ReadAllTextAsync(manifestPath);
+                JsonNode? node = JsonNode.Parse(json);
                 if (node?["tools"] is not JsonObject tools)
+                {
                     return false;
+                }
 
                 return tools.Any(entry =>
                     string.Equals(entry.Key, DotnetGitmojiTaskName, StringComparison.OrdinalIgnoreCase));
@@ -329,8 +374,8 @@ public sealed class GitService : IGitService
 
     private async Task<string> BuildShellHookCommandAsync()
     {
-        var isLocal = await IsLocalToolManifestAsync();
-        var invocation = isLocal ? DotnetGitmojiLocalInvocation : DotnetGitmojiTaskName;
+        bool isLocal = await IsLocalToolManifestAsync();
+        string invocation = isLocal ? DotnetGitmojiLocalInvocation : DotnetGitmojiTaskName;
         return $"{invocation} \"$1\" \"$2\"";
     }
 
@@ -340,8 +385,8 @@ public sealed class GitService : IGitService
 
         if (File.Exists(taskRunnerPath))
         {
-            var existingJson = await File.ReadAllTextAsync(taskRunnerPath);
-            var parsedNode = JsonNode.Parse(existingJson);
+            string existingJson = await File.ReadAllTextAsync(taskRunnerPath);
+            JsonNode? parsedNode = JsonNode.Parse(existingJson);
             rootObject = parsedNode as JsonObject
                          ?? throw new InvalidOperationException(
                              $"Invalid task-runner file at {taskRunnerPath}: root value must be a JSON object.");
@@ -349,10 +394,7 @@ public sealed class GitService : IGitService
         else
         {
             Directory.CreateDirectory(Path.GetDirectoryName(taskRunnerPath)!);
-            rootObject = new JsonObject
-            {
-                ["$schema"] = "https://alirezanet.github.io/Husky.Net/schema.json"
-            };
+            rootObject = new JsonObject { ["$schema"] = "https://alirezanet.github.io/Husky.Net/schema.json" };
         }
 
         JsonArray tasks;
@@ -373,7 +415,7 @@ public sealed class GitService : IGitService
 
         if (!ContainsTaskNamed(tasks, DotnetGitmojiTaskName))
         {
-            var taskEntry = isLocal
+            JsonObject taskEntry = isLocal
                 ? new JsonObject
                 {
                     ["name"] = DotnetGitmojiTaskName,
@@ -389,24 +431,25 @@ public sealed class GitService : IGitService
             tasks.Add(taskEntry);
         }
 
-        var json = rootObject.ToJsonString(new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        string json = rootObject.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(taskRunnerPath, json + Environment.NewLine);
     }
 
     private static bool ContainsTaskNamed(JsonArray tasks, string taskName)
     {
-        foreach (var taskNode in tasks)
+        foreach (JsonNode? taskNode in tasks)
         {
             if (taskNode is not JsonObject taskObject)
+            {
                 continue;
+            }
 
             if (taskObject["name"] is JsonValue taskNameValue &&
-                taskNameValue.TryGetValue<string>(out var existingName) &&
+                taskNameValue.TryGetValue<string>(out string? existingName) &&
                 string.Equals(existingName, taskName, StringComparison.OrdinalIgnoreCase))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -414,15 +457,19 @@ public sealed class GitService : IGitService
 
     private static bool ContainsActiveDotnetGitmojiInvocation(string hookContent)
     {
-        foreach (var rawLine in hookContent.Split('\n'))
+        foreach (string rawLine in hookContent.Split('\n'))
         {
-            var line = rawLine.Trim();
+            string line = rawLine.Trim();
 
             if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+            {
                 continue;
+            }
 
             if (line.Contains(DotnetGitmojiTaskName, StringComparison.OrdinalIgnoreCase))
+            {
                 return true;
+            }
         }
 
         return false;

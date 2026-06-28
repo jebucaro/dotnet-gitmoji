@@ -25,21 +25,17 @@ public class InitCommandTests
 
     private InitCommand CreateCommand(string? mode = null, bool createConfig = false)
     {
-        return new InitCommand(_gitService, _configService)
-        {
-            Mode = mode,
-            CreateConfig = createConfig
-        };
+        return new InitCommand(_gitService, _configService) { Mode = mode, CreateConfig = createConfig };
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenHookAlreadyInstalled_ThrowsCommandException()
     {
         _gitService.IsHookInstalledAsync().Returns(true);
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains(AlreadyInstalledFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -48,8 +44,8 @@ public class InitCommandTests
     public async Task ExecuteAsync_WhenJsHuskyDetected_ShowsGuidanceWithoutInstallingHook()
     {
         _gitService.DetectHuskyKindAsync().Returns(HuskyInstallKind.JsHusky);
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -64,10 +60,10 @@ public class InitCommandTests
     public async Task ExecuteAsync_WhenHuskyNetDetectedWithoutMode_ThrowsCommandException(HuskyInstallKind kind)
     {
         _gitService.DetectHuskyKindAsync().Returns(kind);
-        var command = CreateCommand(null);
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand(null);
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains(SelectSetupModeFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -78,8 +74,8 @@ public class InitCommandTests
     public async Task ExecuteAsync_WhenHuskyNetAndShellMode_CallsInstallShellHook(HuskyInstallKind kind)
     {
         _gitService.DetectHuskyKindAsync().Returns(kind);
-        var command = CreateCommand("shell");
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand("shell");
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -93,8 +89,8 @@ public class InitCommandTests
     public async Task ExecuteAsync_WhenHuskyNetAndTaskRunnerMode_CallsInstallTaskRunnerHook(HuskyInstallKind kind)
     {
         _gitService.DetectHuskyKindAsync().Returns(kind);
-        var command = CreateCommand("task-runner");
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand("task-runner");
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -106,10 +102,10 @@ public class InitCommandTests
     public async Task ExecuteAsync_WhenNoHuskyAndModeSpecified_ThrowsCommandException()
     {
         _gitService.DetectHuskyKindAsync().Returns(HuskyInstallKind.None);
-        var command = CreateCommand("shell");
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand("shell");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains(ModeOnlyValidFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -118,8 +114,8 @@ public class InitCommandTests
     public async Task ExecuteAsync_WhenNoHusky_CallsInstallHookDirect()
     {
         _gitService.DetectHuskyKindAsync().Returns(HuskyInstallKind.None);
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -129,10 +125,10 @@ public class InitCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenInvalidModeValue_ThrowsCommandException()
     {
-        var command = CreateCommand("invalid-mode");
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand("invalid-mode");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains(InvalidModeFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -141,8 +137,8 @@ public class InitCommandTests
     public async Task ExecuteAsync_WhenCreateConfigAndNoExistingConfig_CallsCreateRepoConfig()
     {
         _configService.CreateRepoConfigAsync().Returns("/repo/.gitmojirc.json");
-        var command = CreateCommand(createConfig: true);
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand(createConfig: true);
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -153,8 +149,8 @@ public class InitCommandTests
     public async Task ExecuteAsync_WhenCreateConfigAndConfigAlreadyExists_Succeeds()
     {
         _configService.CreateRepoConfigAsync().Returns((string?)null);
-        var command = CreateCommand(createConfig: true);
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand(createConfig: true);
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -166,10 +162,10 @@ public class InitCommandTests
     {
         _gitService.InstallHookDirectAsync()
             .Returns(Task.FromException(new InvalidOperationException("git hooks directory not found")));
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        InitCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("git hooks directory not found", ex.Message);
     }

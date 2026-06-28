@@ -14,19 +14,23 @@ public sealed partial class GitmojiCommitMessageValidator : ICommitMessageValida
 
     public ValidationResult Validate(CommitMessageContent message, IReadOnlyList<Gitmoji> gitmojis)
     {
-        var subject = message.Subject;
+        string subject = message.Subject;
 
-        var emojiMatch = gitmojis.FirstOrDefault(g => subject.StartsWith(g.Emoji, StringComparison.Ordinal));
+        Gitmoji? emojiMatch = gitmojis.FirstOrDefault(g => subject.StartsWith(g.Emoji, StringComparison.Ordinal));
         if (emojiMatch is not null)
+        {
             return BuildResult(emojiMatch, subject[emojiMatch.Emoji.Length..].TrimStart(), message.Body);
+        }
 
-        var shortcodeMatch = ShortcodePattern().Match(subject);
+        Match shortcodeMatch = ShortcodePattern().Match(subject);
         if (shortcodeMatch.Success)
         {
-            var code = shortcodeMatch.Groups[1].Value;
-            var matched = gitmojis.FirstOrDefault(g => g.Code == code);
+            string code = shortcodeMatch.Groups[1].Value;
+            Gitmoji? matched = gitmojis.FirstOrDefault(g => g.Code == code);
             if (matched is not null)
+            {
                 return BuildResult(matched, subject[shortcodeMatch.Length..], message.Body);
+            }
         }
 
         return new ValidationResult(false, null, null, subject, message.Body);
@@ -34,16 +38,16 @@ public sealed partial class GitmojiCommitMessageValidator : ICommitMessageValida
 
     private static ValidationResult BuildResult(Gitmoji gitmoji, string remainder, string? body)
     {
-        var scopeMatch = ScopePattern().Match(remainder);
+        Match scopeMatch = ScopePattern().Match(remainder);
         if (scopeMatch.Success)
         {
-            var scope = scopeMatch.Groups[1].Value;
-            var title = remainder[scopeMatch.Length..];
+            string scope = scopeMatch.Groups[1].Value;
+            string title = remainder[scopeMatch.Length..];
             return new ValidationResult(true, gitmoji, scope, title, body);
         }
 
         // Strip ": " separator used in the normalized commit format (e.g. "🐛: Fix bug")
-        var titlePart = remainder.StartsWith(": ", StringComparison.Ordinal)
+        string titlePart = remainder.StartsWith(": ", StringComparison.Ordinal)
             ? remainder[2..]
             : remainder;
         return new ValidationResult(true, gitmoji, null, titlePart, body);

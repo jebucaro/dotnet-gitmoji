@@ -29,18 +29,17 @@ public class HookCommandTests
     {
         return new HookCommand(_commitMessageService, _validator, _gitmojiProvider, _promptService, _configService)
         {
-            CommitMessageFile = commitMessageFile,
-            CommitSource = commitSource
+            CommitMessageFile = commitMessageFile, CommitSource = commitSource
         };
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenCommitMessageFileNotFound_ThrowsCommandException()
     {
-        var command = CreateCommand("nonexistent_file.txt");
-        var console = new FakeInMemoryConsole();
+        HookCommand command = CreateCommand("nonexistent_file.txt");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("not found", ex.Message);
     }
@@ -51,8 +50,8 @@ public class HookCommandTests
     [InlineData("commit")]
     public async Task ExecuteAsync_WhenSkippableSource_SkipsValidation(string source)
     {
-        var command = CreateCommand("any_file.txt", source);
-        var console = new FakeInMemoryConsole();
+        HookCommand command = CreateCommand("any_file.txt", source);
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -62,7 +61,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenMessagePromptIsTrue_PromptsForBody()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = true });
@@ -76,8 +75,8 @@ public class HookCommandTests
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
             _promptService.AskMessage().Returns((string?)null);
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -92,7 +91,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenMessagePromptIsFalse_DoesNotPromptForBody()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
@@ -105,8 +104,8 @@ public class HookCommandTests
             _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -121,11 +120,13 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenPromptedTitleExceedsLimit_KeepsOriginalMessage()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration
-                { MaxTitleLength = 10, TrimTitleWhenExceeded = false });
+            {
+                MaxTitleLength = 10, TrimTitleWhenExceeded = false
+            });
             _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
             _commitMessageService.ReadMessageAsync(Arg.Any<string>())
                 .Returns(new CommitMessageContent("bad message without gitmoji", null));
@@ -136,8 +137,8 @@ public class HookCommandTests
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>())
                 .Returns(new string('a', 11));
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -153,14 +154,14 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenReadMessageFails_WarnsToStderrAndSkipsProcessing()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _commitMessageService.ReadMessageAsync(Arg.Any<string>())
                 .Returns(Task.FromException<CommitMessageContent>(new IOException("disk read error")));
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -178,7 +179,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenWriteMessageFails_WarnsToStderrWithoutThrowing()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
@@ -193,8 +194,8 @@ public class HookCommandTests
             _commitMessageService.WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>())
                 .Returns(Task.FromException(new IOException("disk write error")));
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -210,7 +211,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenScopePromptEnabled_AsksForScope()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false, ScopePrompt = true });
@@ -224,8 +225,8 @@ public class HookCommandTests
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
             _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -240,7 +241,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenNonInteractiveAndEnforceConvention_ThrowsCommandException()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { EnforceConvention = true });
@@ -251,10 +252,11 @@ public class HookCommandTests
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(false);
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
-            var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+            CommandException ex =
+                await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
             Assert.Contains(DoesNotFollowConventionFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
         }
@@ -267,7 +269,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenNonInteractiveAndNoEnforceConvention_WritesWarningAndSkips()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { EnforceConvention = false });
@@ -278,8 +280,8 @@ public class HookCommandTests
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(false);
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -295,13 +297,12 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenEmojiFormatIsCode_WritesCodePrefixedMessage()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration
             {
-                MessagePrompt = false,
-                EmojiFormat = EmojiFormat.Code
+                MessagePrompt = false, EmojiFormat = EmojiFormat.Code
             });
             _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
             _commitMessageService.ReadMessageAsync(Arg.Any<string>())
@@ -312,8 +313,8 @@ public class HookCommandTests
             _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -331,7 +332,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenScopePromptEnabledAndMessageHasScope_PassesThrough()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync().Returns(new ToolConfiguration { ScopePrompt = true, MessagePrompt = false });
@@ -341,8 +342,8 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(true, BugGitmoji, "api", "Fix issue", null));
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -358,7 +359,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenScopePromptEnabledAndScopeMissingAndNonInteractiveAndEnforceConvention_Rejects()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync()
@@ -370,10 +371,11 @@ public class HookCommandTests
                 .Returns(new ValidationResult(true, BugGitmoji, null, "Fix issue", null));
             _promptService.IsInteractive.Returns(false);
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
-            var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+            CommandException ex =
+                await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
             Assert.Contains(ScopeRequiredFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
         }
@@ -386,7 +388,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenMessagePromptEnabledAndBodyMissingAndNonInteractiveAndEnforceConvention_Rejects()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync()
@@ -398,10 +400,11 @@ public class HookCommandTests
                 .Returns(new ValidationResult(true, BugGitmoji, null, "Fix issue", null));
             _promptService.IsInteractive.Returns(false);
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
-            var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+            CommandException ex =
+                await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
             Assert.Contains(MessageBodyRequiredFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
         }
@@ -414,7 +417,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenBothPromptsEnabledAndBothMissingAndNonInteractiveAndEnforceConvention_Rejects()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync()
@@ -426,10 +429,11 @@ public class HookCommandTests
                 .Returns(new ValidationResult(true, BugGitmoji, null, "Fix issue", null));
             _promptService.IsInteractive.Returns(false);
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
-            var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+            CommandException ex =
+                await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
             Assert.Contains(ScopeAndMessageBodyFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
         }
@@ -443,12 +447,14 @@ public class HookCommandTests
     public async Task
         ExecuteAsync_WhenScopePromptEnabledAndScopeMissingAndNonInteractiveAndNoEnforceConvention_WarnsAndSkips()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync()
                 .Returns(new ToolConfiguration
-                    { ScopePrompt = true, MessagePrompt = false, EnforceConvention = false });
+                {
+                    ScopePrompt = true, MessagePrompt = false, EnforceConvention = false
+                });
             _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
             _commitMessageService.ReadMessageAsync(Arg.Any<string>())
                 .Returns(new CommitMessageContent(":bug: Fix issue", null));
@@ -456,8 +462,8 @@ public class HookCommandTests
                 .Returns(new ValidationResult(true, BugGitmoji, null, "Fix issue", null));
             _promptService.IsInteractive.Returns(false);
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -475,7 +481,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenValidMessageMissingScopeAndInteractive_AsksForScopeAndWritesMessage()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync()
@@ -488,8 +494,8 @@ public class HookCommandTests
             _promptService.IsInteractive.Returns(true);
             _promptService.AskScope(Arg.Any<string[]?>()).Returns("api");
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -508,7 +514,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenValidMessageMissingBodyAndInteractive_AsksForBodyAndWritesMessage()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync()
@@ -521,8 +527,8 @@ public class HookCommandTests
             _promptService.IsInteractive.Returns(true);
             _promptService.AskMessage().Returns("some body text");
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -541,12 +547,14 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenValidMessageMissingScopeAndInteractive_EmbedsScopeInSubject()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync()
                 .Returns(new ToolConfiguration
-                    { ScopePrompt = true, MessagePrompt = false, EmojiFormat = EmojiFormat.Code });
+                {
+                    ScopePrompt = true, MessagePrompt = false, EmojiFormat = EmojiFormat.Code
+                });
             _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
             _commitMessageService.ReadMessageAsync(Arg.Any<string>())
                 .Returns(new CommitMessageContent(":bug: fix issue", null));
@@ -555,8 +563,8 @@ public class HookCommandTests
             _promptService.IsInteractive.Returns(true);
             _promptService.AskScope(Arg.Any<string[]?>()).Returns("core");
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -574,7 +582,7 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenPrependPathAndScopePromptEnabled_EmbedsScopeInSubject()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             _configService.LoadAsync()
@@ -589,8 +597,8 @@ public class HookCommandTests
             _promptService.AskScope(Arg.Any<string[]?>()).Returns("ui");
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix layout");
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -609,13 +617,15 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenValidMessageMissingScopeAndPredefinedScopes_PassesScopesToPrompt()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
-            var predefinedScopes = new[] { "api", "core" };
+            string[] predefinedScopes = new[] { "api", "core" };
             _configService.LoadAsync()
                 .Returns(new ToolConfiguration
-                    { ScopePrompt = true, MessagePrompt = false, Scopes = predefinedScopes });
+                {
+                    ScopePrompt = true, MessagePrompt = false, Scopes = predefinedScopes
+                });
             _gitmojiProvider.GetAllAsync().Returns([BugGitmoji]);
             _commitMessageService.ReadMessageAsync(Arg.Any<string>())
                 .Returns(new CommitMessageContent(":bug: fix issue", null));
@@ -624,8 +634,8 @@ public class HookCommandTests
             _promptService.IsInteractive.Returns(true);
             _promptService.AskScope(Arg.Any<string[]?>()).Returns("api");
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
@@ -641,13 +651,15 @@ public class HookCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenPrependPathAndPredefinedScopes_PassesScopesToPrompt()
     {
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
-            var predefinedScopes = new[] { "api", "core" };
+            string[] predefinedScopes = new[] { "api", "core" };
             _configService.LoadAsync()
                 .Returns(new ToolConfiguration
-                    { ScopePrompt = true, MessagePrompt = false, Scopes = predefinedScopes });
+                {
+                    ScopePrompt = true, MessagePrompt = false, Scopes = predefinedScopes
+                });
             _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
             _commitMessageService.ReadMessageAsync(Arg.Any<string>())
                 .Returns(new CommitMessageContent("bad message without gitmoji", null));
@@ -658,8 +670,8 @@ public class HookCommandTests
             _promptService.AskScope(Arg.Any<string[]?>()).Returns("api");
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix layout");
 
-            var command = CreateCommand(tempFile);
-            var console = new FakeInMemoryConsole();
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 

@@ -15,7 +15,7 @@ public static class Program
         // Harmless no-op when stdin is already a TTY (client mode).
         TtyConsoleInput.TryReopenStdin();
 
-        var services = new ServiceCollection();
+        ServiceCollection services = new();
 
         // Services
         services.AddHttpClient();
@@ -40,9 +40,9 @@ public static class Program
         services.AddTransient<InitCommand>();
         services.AddTransient<RemoveCommand>();
 
-        using var serviceProvider = services.BuildServiceProvider();
+        using ServiceProvider serviceProvider = services.BuildServiceProvider();
 
-        var app = new CommandLineApplicationBuilder()
+        CommandLineApplication app = new CommandLineApplicationBuilder()
             .AddCommandsFromThisAssembly()
             .UseTypeInstantiator(type => serviceProvider.GetRequiredService(type))
             .Build();

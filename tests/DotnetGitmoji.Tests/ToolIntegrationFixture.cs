@@ -16,28 +16,30 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
         RepositoryRoot = FindRepositoryRoot();
 
         _workDirectory = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-it-{Guid.NewGuid():N}");
-        var nupkgDirectory = Path.Combine(_workDirectory, "nupkg");
+        string nupkgDirectory = Path.Combine(_workDirectory, "nupkg");
         ToolPathDirectory = Path.Combine(_workDirectory, "tool");
 
         Directory.CreateDirectory(nupkgDirectory);
         Directory.CreateDirectory(ToolPathDirectory);
 
-        var projectPath = Path.Combine(RepositoryRoot, "src", "DotnetGitmoji", "DotnetGitmoji.csproj");
-        var toolVersion = ReadToolVersion(projectPath);
+        string projectPath = Path.Combine(RepositoryRoot, "src", "DotnetGitmoji", "DotnetGitmoji.csproj");
+        string toolVersion = ReadToolVersion(projectPath);
 
-        var packResult = await RunProcessAsync(
+        ProcessResult packResult = await RunProcessAsync(
             "dotnet",
             ["pack", projectPath, "-c", "Release", "-o", nupkgDirectory, "--nologo"],
             RepositoryRoot,
             timeoutSeconds: 180);
 
         if (packResult.ExitCode != 0)
+        {
             throw new InvalidOperationException(
                 $"dotnet pack failed with exit code {packResult.ExitCode}.{Environment.NewLine}" +
                 $"STDOUT:{Environment.NewLine}{packResult.StandardOutput}{Environment.NewLine}" +
                 $"STDERR:{Environment.NewLine}{packResult.StandardError}");
+        }
 
-        var installResult = await RunProcessAsync(
+        ProcessResult installResult = await RunProcessAsync(
             "dotnet",
             [
                 "tool", "install",
@@ -51,16 +53,20 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
             timeoutSeconds: 180);
 
         if (installResult.ExitCode != 0)
+        {
             throw new InvalidOperationException(
                 $"dotnet tool install failed with exit code {installResult.ExitCode}.{Environment.NewLine}" +
                 $"STDOUT:{Environment.NewLine}{installResult.StandardOutput}{Environment.NewLine}" +
                 $"STDERR:{Environment.NewLine}{installResult.StandardError}");
+        }
     }
 
     public ValueTask DisposeAsync()
     {
         if (!string.IsNullOrWhiteSpace(_workDirectory) && Directory.Exists(_workDirectory))
+        {
             Directory.Delete(_workDirectory, true);
+        }
 
         return ValueTask.CompletedTask;
     }
@@ -85,7 +91,7 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
         IReadOnlyDictionary<string, string?>? environment = null,
         int timeoutSeconds = 60)
     {
-        var startInfo = new ProcessStartInfo(fileName)
+        ProcessStartInfo startInfo = new(fileName)
         {
             WorkingDirectory = workingDirectory,
             RedirectStandardInput = true,
@@ -95,22 +101,28 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
             CreateNoWindow = true
         };
 
-        foreach (var argument in arguments)
+        foreach (string argument in arguments)
+        {
             startInfo.ArgumentList.Add(argument);
+        }
 
         startInfo.Environment["NO_COLOR"] = "1";
 
         if (environment is not null)
-            foreach (var (key, value) in environment)
+        {
+            foreach ((string key, string? value) in environment)
+            {
                 startInfo.Environment[key] = value ?? string.Empty;
+            }
+        }
 
-        using var process = Process.Start(startInfo)
-                            ?? throw new InvalidOperationException($"Failed to start process: {fileName}");
+        using Process process = Process.Start(startInfo)
+                                ?? throw new InvalidOperationException($"Failed to start process: {fileName}");
 
-        var standardOutputTask = process.StandardOutput.ReadToEndAsync();
-        var standardErrorTask = process.StandardError.ReadToEndAsync();
+        Task<string> standardOutputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> standardErrorTask = process.StandardError.ReadToEndAsync();
 
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+        using CancellationTokenSource timeoutCts = new(TimeSpan.FromSeconds(timeoutSeconds));
         try
         {
             await process.WaitForExitAsync(timeoutCts.Token);
@@ -118,26 +130,30 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
         catch (OperationCanceledException)
         {
             if (!process.HasExited)
+            {
                 process.Kill(true);
+            }
 
             throw new TimeoutException(
                 $"Process timed out after {timeoutSeconds} seconds: {fileName} {string.Join(" ", arguments)}");
         }
 
-        var standardOutput = await standardOutputTask;
-        var standardError = await standardErrorTask;
+        string standardOutput = await standardOutputTask;
+        string standardError = await standardErrorTask;
 
         return new ProcessResult(process.ExitCode, standardOutput, standardError);
     }
 
     private static string FindRepositoryRoot()
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
 
         while (directory is not null)
         {
             if (File.Exists(Path.Combine(directory.FullName, "dotnet-gitmoji.slnx")))
+            {
                 return directory.FullName;
+            }
 
             directory = directory.Parent;
         }
@@ -147,39 +163,45 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
 
     private static string ReadToolVersion(string projectPath)
     {
-        var document = XDocument.Load(projectPath);
-        var version = document
+        XDocument document = XDocument.Load(projectPath);
+        string? version = document
             .Descendants()
             .FirstOrDefault(e => e.Name.LocalName == "Version")
             ?.Value
             ?.Trim();
 
         if (string.IsNullOrWhiteSpace(version))
+        {
             throw new InvalidOperationException($"Could not read <Version> from {projectPath}.");
+        }
 
         return version;
     }
 
     private string GetToolExecutablePath()
     {
-        var preferredNames = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        string[] preferredNames = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? new[] { "dotnet-gitmoji.exe", "dotnet-gitmoji.cmd", "dotnet-gitmoji.bat", "dotnet-gitmoji" }
             : new[] { "dotnet-gitmoji", "dotnet-gitmoji.exe", "dotnet-gitmoji.cmd" };
 
-        foreach (var name in preferredNames)
+        foreach (string name in preferredNames)
         {
-            var candidate = Path.Combine(ToolPathDirectory, name);
+            string candidate = Path.Combine(ToolPathDirectory, name);
             if (File.Exists(candidate))
+            {
                 return candidate;
+            }
         }
 
-        var discoveredLauncher = Directory
+        string? discoveredLauncher = Directory
             .EnumerateFiles(ToolPathDirectory, "dotnet-gitmoji*", SearchOption.TopDirectoryOnly)
             .OrderBy(GetLauncherPriority)
             .FirstOrDefault();
 
         if (discoveredLauncher is not null)
+        {
             return discoveredLauncher;
+        }
 
         throw new FileNotFoundException(
             $"Could not find installed dotnet-gitmoji executable in {ToolPathDirectory}.");
@@ -187,7 +209,7 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
 
     private static int GetLauncherPriority(string launcherPath)
     {
-        var fileName = Path.GetFileName(launcherPath).ToLowerInvariant();
+        string fileName = Path.GetFileName(launcherPath).ToLowerInvariant();
 
         return fileName switch
         {

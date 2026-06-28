@@ -22,8 +22,8 @@ public class SearchCommandTests
     public async Task ExecuteAsync_WhenNoResults_CallsSearchAsyncAndDoesNotThrow()
     {
         _gitmojiProvider.SearchAsync(TestKeyword).Returns(Array.Empty<Gitmoji>());
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        SearchCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -37,8 +37,8 @@ public class SearchCommandTests
         {
             new Gitmoji("🐛", "entity", ":bug:", "Fix a bug", "bug", null)
         });
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        SearchCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -49,8 +49,8 @@ public class SearchCommandTests
     public async Task ExecuteAsync_WhenKeywordContainsMarkupChars_EscapesKeywordSafely()
     {
         _gitmojiProvider.SearchAsync(MarkupKeyword).Returns(Array.Empty<Gitmoji>());
-        var command = CreateCommand(MarkupKeyword);
-        var console = new FakeInMemoryConsole();
+        SearchCommand command = CreateCommand(MarkupKeyword);
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 

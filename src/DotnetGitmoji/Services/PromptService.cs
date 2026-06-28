@@ -38,8 +38,7 @@ public sealed partial class PromptService : IPromptService
         _fuzzyMatcher = fuzzyMatcher ?? throw new ArgumentNullException(nameof(fuzzyMatcher));
         _console = AnsiConsole.Create(new AnsiConsoleSettings
         {
-            Interactive = InteractionSupport.Yes,
-            Ansi = AnsiSupport.Yes
+            Interactive = InteractionSupport.Yes, Ansi = AnsiSupport.Yes
         });
     }
 
@@ -52,9 +51,11 @@ public sealed partial class PromptService : IPromptService
     {
         ArgumentNullException.ThrowIfNull(gitmojis);
         if (gitmojis.Count == 0)
+        {
             throw new InvalidOperationException("Cannot show an empty gitmoji list.");
+        }
 
-        var result = SelectWithFuzzySearch(
+        Gitmoji result = SelectWithFuzzySearch(
             gitmojis,
             new FuzzyPickerOptions<Gitmoji>(
                 "Choose a gitmoji:",
@@ -71,8 +72,10 @@ public sealed partial class PromptService : IPromptService
             $"[green]✔[/] [bold]Gitmoji:[/] {Markup.Escape(result.Emoji)} [grey]{Markup.Escape(result.Description)}[/]{FormatSemverBadge(result, showSemverBadge)}");
 
         if (showSemverBadge && result.Semver is "patch" or "minor")
+        {
             _console.MarkupLine(
                 "[yellow]⚠ For breaking changes, consider 💥 [bold](boom)[/] — it signals MAJOR semver impact.[/]");
+        }
 
         return result;
     }
@@ -80,7 +83,10 @@ public sealed partial class PromptService : IPromptService
     private static string FormatSemverBadge(Gitmoji gitmoji, bool showSemverBadge)
     {
         if (!showSemverBadge || gitmoji.Semver is null)
+        {
             return string.Empty;
+        }
+
         return $" [blue]({gitmoji.Semver})[/]";
     }
 
@@ -88,17 +94,19 @@ public sealed partial class PromptService : IPromptService
     {
         if (predefinedScopes is { Count: > 0 })
         {
-            var scopes = predefinedScopes
+            string[] scopes = predefinedScopes
                 .Where(scope => !string.IsNullOrWhiteSpace(scope))
                 .Select(scope => scope.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
             if (scopes.Length == 0)
+            {
                 return null;
+            }
 
-            var scopesWithNone = scopes.Prepend(ScopeNoneOption).ToArray();
-            var selected = SelectWithFuzzySearch(
+            string[] scopesWithNone = scopes.Prepend(ScopeNoneOption).ToArray();
+            string selected = SelectWithFuzzySearch(
                 scopesWithNone,
                 new FuzzyPickerOptions<string>(
                     "Select scope:",
@@ -115,8 +123,8 @@ public sealed partial class PromptService : IPromptService
 
         while (true)
         {
-            var input = _console.Prompt(new TextPrompt<string>("[grey]Enter scope:[/]"));
-            var scope = input.Trim();
+            string input = _console.Prompt(new TextPrompt<string>("[grey]Enter scope:[/]"));
+            string scope = input.Trim();
 
             if (!ScopePattern().IsMatch(scope))
             {
@@ -139,20 +147,24 @@ public sealed partial class PromptService : IPromptService
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        var defaultTitle = defaultValue;
+        string? defaultTitle = defaultValue;
         while (true)
         {
-            var prompt = new TextPrompt<string>("[grey]Enter commit title:[/]")
+            TextPrompt<string> prompt = new TextPrompt<string>("[grey]Enter commit title:[/]")
                 .AllowEmpty();
             if (!string.IsNullOrEmpty(defaultTitle))
+            {
                 prompt.DefaultValue(defaultTitle);
+            }
 
-            var title = _console.Prompt(prompt);
+            string title = _console.Prompt(prompt);
 
             if (string.IsNullOrWhiteSpace(title))
+            {
                 return null;
+            }
 
-            var result = CommitTitlePolicy.ApplyPromptPolicy(title, config);
+            CommitTitlePromptResult result = CommitTitlePolicy.ApplyPromptPolicy(title, config);
             if (result.WasTrimmed)
             {
                 _console.MarkupLine(
@@ -174,7 +186,7 @@ public sealed partial class PromptService : IPromptService
 
     public string? AskMessage()
     {
-        var message = _console.Ask<string?>("[grey]Enter commit message:[/]");
+        string? message = _console.Ask<string?>("[grey]Enter commit message:[/]");
         return string.IsNullOrWhiteSpace(message) ? null : message;
     }
 
@@ -184,12 +196,16 @@ public sealed partial class PromptService : IPromptService
         Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems) where T : class
     {
         if (items.Count == 0)
+        {
             throw new InvalidOperationException("Cannot show an empty selection prompt.");
+        }
 
         // Terminals without an alternate buffer are effectively never hit interactively, but degrade
         // to a clear-and-redraw loop there (correct, may flicker) rather than risk anything fancier.
         if (!_console.Profile.Capabilities.AlternateBuffer)
+        {
             return RunFuzzyLoop(items, options, rankItems, RenderFallbackFrame);
+        }
 
         // Render on the alternate screen with absolute cursor positioning. This sidesteps
         // Spectre.Console's Live cursor math (which moves up by the tallest frame ever rendered and
@@ -218,22 +234,28 @@ public sealed partial class PromptService : IPromptService
         Func<IReadOnlyList<T>, string, IReadOnlyList<T>> rankItems,
         Action<IRenderable> render) where T : class
     {
-        var query = string.Empty;
-        var selectedIndex = 0;
+        string query = string.Empty;
+        int selectedIndex = 0;
 
         while (true)
         {
-            var rankedItems = string.IsNullOrWhiteSpace(query) ? items : rankItems(items, query);
+            IReadOnlyList<T> rankedItems = string.IsNullOrWhiteSpace(query) ? items : rankItems(items, query);
             if (rankedItems.Count == 0)
+            {
                 selectedIndex = 0;
+            }
             else if (selectedIndex >= rankedItems.Count)
+            {
                 selectedIndex = rankedItems.Count - 1;
+            }
 
             render(BuildFuzzySelectionFrame(options, query, rankedItems, selectedIndex));
 
-            var keyAction = FuzzySelectorInputRouter.Route(Console.ReadKey(true));
-            if (TryApplyKeyAction(keyAction, rankedItems, ref query, ref selectedIndex, out var result))
+            FuzzySelectorInputAction keyAction = FuzzySelectorInputRouter.Route(Console.ReadKey(true));
+            if (TryApplyKeyAction(keyAction, rankedItems, ref query, ref selectedIndex, out T? result))
+            {
                 return result;
+            }
         }
     }
 
@@ -271,12 +293,18 @@ public sealed partial class PromptService : IPromptService
         {
             case FuzzySelectorInputActionKind.MoveUp:
                 if (rankedItems.Count > 0)
+                {
                     selectedIndex = WrapDecrementIndex(selectedIndex, rankedItems.Count);
+                }
+
                 break;
 
             case FuzzySelectorInputActionKind.MoveDown:
                 if (rankedItems.Count > 0)
+                {
                     selectedIndex = WrapIncrementIndex(selectedIndex, rankedItems.Count);
+                }
+
                 break;
 
             case FuzzySelectorInputActionKind.Submit:
@@ -321,7 +349,7 @@ public sealed partial class PromptService : IPromptService
         IReadOnlyList<T> rankedItems,
         int selectedIndex)
     {
-        var rows = new List<IRenderable>();
+        List<IRenderable> rows = new();
 
         if (options.Header is not null)
         {
@@ -332,7 +360,7 @@ public sealed partial class PromptService : IPromptService
         rows.Add(new Markup($"[bold]{Markup.Escape(options.Title)}[/]"));
         rows.Add(new Markup("[grey]Type to fuzzy search. Use ↑/↓ to navigate, Enter to select, Esc to clear.[/]"));
 
-        var searchDisplay = string.IsNullOrWhiteSpace(query)
+        string searchDisplay = string.IsNullOrWhiteSpace(query)
             ? $"[grey]{Markup.Escape(options.SearchPlaceholder)}[/]"
             : $"[white]{Markup.Escape(query)}[/]";
         rows.Add(new Markup($"[grey]Search:[/] {searchDisplay}"));
@@ -344,16 +372,16 @@ public sealed partial class PromptService : IPromptService
             return WrapFullWidth(new Rows(rows));
         }
 
-        var pageSize = ResolvePageSize(options);
-        var pageStart = CalculatePageStart(selectedIndex, rankedItems.Count, pageSize);
-        var visibleItems = rankedItems.Skip(pageStart).Take(pageSize).ToArray();
+        int pageSize = ResolvePageSize(options);
+        int pageStart = CalculatePageStart(selectedIndex, rankedItems.Count, pageSize);
+        T[] visibleItems = rankedItems.Skip(pageStart).Take(pageSize).ToArray();
 
         rows.Add(BuildItemGrid(options, visibleItems, pageStart, selectedIndex));
 
         if (rankedItems.Count > pageSize)
         {
-            var first = pageStart + 1;
-            var last = pageStart + visibleItems.Length;
+            int first = pageStart + 1;
+            int last = pageStart + visibleItems.Length;
             rows.Add(new Markup($"[grey]Showing {first}-{last} of {rankedItems.Count} matches.[/]"));
         }
 
@@ -367,7 +395,7 @@ public sealed partial class PromptService : IPromptService
     // no screen clear required. A single expanded grid column does the padding.
     private static Grid WrapFullWidth(IRenderable content)
     {
-        var grid = new Grid();
+        Grid grid = new();
         grid.AddColumn(new GridColumn().Padding(0, 0, 0, 0));
         grid.Expand();
         grid.AddRow(content);
@@ -380,14 +408,14 @@ public sealed partial class PromptService : IPromptService
         int pageStart,
         int selectedIndex)
     {
-        var grid = new Grid();
+        Grid grid = new();
         grid.AddColumn(new GridColumn().NoWrap().Padding(0, 0, 0, 0));
         grid.AddColumn(new GridColumn().Padding(0, 0, 0, 0));
 
-        for (var index = 0; index < visibleItems.Length; index++)
+        for (int index = 0; index < visibleItems.Length; index++)
         {
-            var absoluteIndex = pageStart + index;
-            var marker = absoluteIndex == selectedIndex
+            int absoluteIndex = pageStart + index;
+            Markup marker = absoluteIndex == selectedIndex
                 ? new Markup("[green]❯ [/]")
                 : new Markup("  ");
             grid.AddRow(marker, options.RenderItem(visibleItems[index]));
@@ -399,11 +427,15 @@ public sealed partial class PromptService : IPromptService
     private static void AddDetailPanel<T>(FuzzyPickerOptions<T> options, T selectedItem, List<IRenderable> rows)
     {
         if (options.RenderDetail is null)
+        {
             return;
+        }
 
-        var detail = options.RenderDetail(selectedItem);
+        string? detail = options.RenderDetail(selectedItem);
         if (detail is null)
+        {
             return;
+        }
 
         rows.Add(new Markup(BlankLine));
         rows.Add(
@@ -436,17 +468,21 @@ public sealed partial class PromptService : IPromptService
     internal static int CalculatePageSize(int windowHeight, bool hasHeader, bool hasDetail, int maxPageSize)
     {
         if (windowHeight <= 0)
+        {
             return maxPageSize;
+        }
 
-        var overhead = ChromeLines
+        int overhead = ChromeLines
                        + (hasHeader ? HeaderLines : 0)
                        + (hasDetail ? DetailLines : 0);
-        var available = windowHeight - overhead;
+        int available = windowHeight - overhead;
 
         // When even the minimum list would overflow the window, prefer fitting (>= 1 row)
         // over the usability floor so the frame never scrolls and corrupts the Live render.
         if (available < MinPageSize)
+        {
             return Math.Max(1, available);
+        }
 
         return Math.Min(available, maxPageSize);
     }
@@ -454,10 +490,12 @@ public sealed partial class PromptService : IPromptService
     private static int CalculatePageStart(int selectedIndex, int itemCount, int pageSize)
     {
         if (itemCount <= pageSize)
+        {
             return 0;
+        }
 
-        var halfWindow = pageSize / 2;
-        var start = Math.Max(0, selectedIndex - halfWindow);
+        int halfWindow = pageSize / 2;
+        int start = Math.Max(0, selectedIndex - halfWindow);
         return Math.Min(start, Math.Max(0, itemCount - pageSize));
     }
 

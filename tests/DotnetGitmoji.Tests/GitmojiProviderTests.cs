@@ -21,17 +21,17 @@ public class GitmojiProviderTests
         string url = "https://gitmoji.dev/api/gitmojis",
         IGitmojiFuzzyMatcher? fuzzyMatcher = null)
     {
-        var factory = Substitute.For<IHttpClientFactory>();
+        IHttpClientFactory? factory = Substitute.For<IHttpClientFactory>();
         factory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(handler));
 
-        var config = new ToolConfiguration { GitmojisUrl = url };
+        ToolConfiguration config = new() { GitmojisUrl = url };
         return new GitmojiProvider(factory, config, fuzzyMatcher ?? new GitmojiFuzzyMatcher());
     }
 
     [Fact]
     public async Task TryFetchFromApi_WhenContentLengthExceedsLimit_ReturnsEmbeddedFallback()
     {
-        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        FakeHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(ValidJson)
             {
@@ -39,10 +39,10 @@ public class GitmojiProviderTests
             }
         });
 
-        var provider = CreateProvider(handler);
+        GitmojiProvider provider = CreateProvider(handler);
 
         // GetAllAsync falls through to embedded default when API returns oversized response
-        var result = await provider.ForceRefreshAsync();
+        IReadOnlyList<Gitmoji> result = await provider.ForceRefreshAsync();
 
         Assert.NotNull(result);
         Assert.True(result.Count > 0);
@@ -52,8 +52,8 @@ public class GitmojiProviderTests
     [Fact]
     public async Task TryFetchFromApi_WhenContentLengthWithinLimit_ReturnsData()
     {
-        var json = ValidJson;
-        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        string json = ValidJson;
+        FakeHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
             {
@@ -61,8 +61,8 @@ public class GitmojiProviderTests
             }
         });
 
-        var provider = CreateProvider(handler);
-        var result = await provider.ForceRefreshAsync();
+        GitmojiProvider provider = CreateProvider(handler);
+        IReadOnlyList<Gitmoji> result = await provider.ForceRefreshAsync();
 
         Assert.NotNull(result);
         Assert.Contains(result, g => g.Code == ":art:");
@@ -73,13 +73,13 @@ public class GitmojiProviderTests
     [InlineData("ftp://gitmoji.dev/api/gitmojis")]
     public async Task TryFetchFromApi_WhenNonHttpsUrl_ReturnsEmbeddedFallback(string url)
     {
-        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        FakeHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(ValidJson)
         });
 
-        var provider = CreateProvider(handler, url);
-        var result = await provider.ForceRefreshAsync();
+        GitmojiProvider provider = CreateProvider(handler, url);
+        IReadOnlyList<Gitmoji> result = await provider.ForceRefreshAsync();
 
         Assert.NotNull(result);
         Assert.True(result.Count > 0);
@@ -90,20 +90,17 @@ public class GitmojiProviderTests
     [Fact]
     public async Task SearchAsync_DelegatesRankingToFuzzyMatcher()
     {
-        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        FakeHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(ValidJson)
         });
 
-        var fuzzyMatcher = Substitute.For<IGitmojiFuzzyMatcher>();
-        var expected = new[]
-        {
-            new Gitmoji("🐛", "entity", ":bug:", "Fix a bug", "bug", null)
-        };
+        IGitmojiFuzzyMatcher? fuzzyMatcher = Substitute.For<IGitmojiFuzzyMatcher>();
+        Gitmoji[] expected = new[] { new Gitmoji("🐛", "entity", ":bug:", "Fix a bug", "bug", null) };
         fuzzyMatcher.RankGitmojis(Arg.Any<IReadOnlyList<Gitmoji>>(), "bug").Returns(expected);
 
-        var provider = CreateProvider(handler, fuzzyMatcher: fuzzyMatcher);
-        var result = await provider.SearchAsync("bug");
+        GitmojiProvider provider = CreateProvider(handler, fuzzyMatcher: fuzzyMatcher);
+        IReadOnlyList<Gitmoji> result = await provider.SearchAsync("bug");
 
         Assert.Equal(expected, result);
         fuzzyMatcher.Received(1).RankGitmojis(Arg.Any<IReadOnlyList<Gitmoji>>(), "bug");
@@ -112,10 +109,10 @@ public class GitmojiProviderTests
     [Fact]
     public async Task ForceRefreshAsync_WhenApiReturns500_FallsBackToEmbeddedDefault()
     {
-        var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-        var provider = CreateProvider(handler);
+        FakeHandler handler = new(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        GitmojiProvider provider = CreateProvider(handler);
 
-        var result = await provider.ForceRefreshAsync();
+        IReadOnlyList<Gitmoji> result = await provider.ForceRefreshAsync();
 
         Assert.NotNull(result);
         Assert.True(result.Count > 0);
@@ -124,25 +121,25 @@ public class GitmojiProviderTests
     [Fact]
     public async Task GetAllAsync_WhenValidCacheExists_ReturnsFromCacheWithoutCallingApi()
     {
-        var cachePath = DotnetGitmojiPaths.GitmojiCachePath;
-        var hadCache = File.Exists(cachePath);
-        var backup = hadCache
+        string cachePath = DotnetGitmojiPaths.GitmojiCachePath;
+        bool hadCache = File.Exists(cachePath);
+        byte[]? backup = hadCache
             ? await File.ReadAllBytesAsync(cachePath, TestContext.Current.CancellationToken)
             : null;
 
         try
         {
-            var cacheGitmojis = Enumerable.Range(0, 50)
+            Gitmoji[] cacheGitmojis = Enumerable.Range(0, 50)
                 .Select(i => new Gitmoji($"🎨", "entity", $":art{i}:", $"desc{i}", $"art{i}", null))
                 .ToArray();
-            var cacheJson = JsonSerializer.Serialize(new GitmojiResponse(cacheGitmojis));
+            string cacheJson = JsonSerializer.Serialize(new GitmojiResponse(cacheGitmojis));
             Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
             await File.WriteAllTextAsync(cachePath, cacheJson, TestContext.Current.CancellationToken);
 
-            var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.InternalServerError));
-            var provider = CreateProvider(handler);
+            FakeHandler handler = new(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            GitmojiProvider provider = CreateProvider(handler);
 
-            var result = await provider.GetAllAsync();
+            IReadOnlyList<Gitmoji> result = await provider.GetAllAsync();
 
             Assert.NotNull(result);
             Assert.True(result.Count >= 50);
@@ -151,29 +148,36 @@ public class GitmojiProviderTests
         finally
         {
             if (backup is not null)
+            {
                 await File.WriteAllBytesAsync(cachePath, backup, TestContext.Current.CancellationToken);
+            }
             else if (!hadCache && File.Exists(cachePath))
+            {
                 File.Delete(cachePath);
+            }
         }
     }
 
     [Fact]
     public async Task GetAllAsync_WhenCacheMissingAndApiUnavailable_ReturnsEmbeddedFallback()
     {
-        var cachePath = DotnetGitmojiPaths.GitmojiCachePath;
-        var hadCache = File.Exists(cachePath);
-        var backup = hadCache
+        string cachePath = DotnetGitmojiPaths.GitmojiCachePath;
+        bool hadCache = File.Exists(cachePath);
+        byte[]? backup = hadCache
             ? await File.ReadAllBytesAsync(cachePath, TestContext.Current.CancellationToken)
             : null;
 
-        if (hadCache) File.Delete(cachePath);
+        if (hadCache)
+        {
+            File.Delete(cachePath);
+        }
 
         try
         {
-            var handler = new FakeHandler(new HttpResponseMessage(HttpStatusCode.OK));
-            var provider = CreateProvider(handler, "http://not-https.example.com/gitmojis");
+            FakeHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK));
+            GitmojiProvider provider = CreateProvider(handler, "http://not-https.example.com/gitmojis");
 
-            var result = await provider.GetAllAsync();
+            IReadOnlyList<Gitmoji> result = await provider.GetAllAsync();
 
             Assert.NotNull(result);
             Assert.True(result.Count > 0);
@@ -181,7 +185,9 @@ public class GitmojiProviderTests
         finally
         {
             if (backup is not null)
+            {
                 await File.WriteAllBytesAsync(cachePath, backup, TestContext.Current.CancellationToken);
+            }
         }
     }
 

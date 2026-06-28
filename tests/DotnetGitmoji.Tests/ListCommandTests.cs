@@ -23,8 +23,8 @@ public class ListCommandTests
             new Gitmoji("🎨", "entity", ":art:", "Improve structure", "art", null),
             new Gitmoji("🐛", "entity", ":bug:", "Fix a bug", "bug", null)
         });
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        ListCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -35,8 +35,8 @@ public class ListCommandTests
     public async Task ExecuteAsync_WhenNoGitmojis_SucceedsWithEmptyTable()
     {
         _gitmojiProvider.GetAllAsync().Returns(Array.Empty<Gitmoji>());
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        ListCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 

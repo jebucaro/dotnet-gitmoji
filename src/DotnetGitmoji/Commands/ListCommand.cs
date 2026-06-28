@@ -1,6 +1,7 @@
 using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
+using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
 using Spectre.Console;
 
@@ -18,17 +19,19 @@ public sealed partial class ListCommand : ICommand
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        var gitmojis = await _gitmojiProvider.GetAllAsync();
-        var table = new Table()
+        IReadOnlyList<Gitmoji> gitmojis = await _gitmojiProvider.GetAllAsync();
+        Table table = new Table()
             .Border(TableBorder.Simple)
             .AddColumn("Emoji")
             .AddColumn("Code")
             .AddColumn("Description")
             .AddColumn("Semver");
 
-        foreach (var g in gitmojis)
+        foreach (Gitmoji g in gitmojis)
+        {
             table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description),
                 new Markup(FormatSemver(g.Semver)));
+        }
 
         AnsiConsole.Write(table);
     }
