@@ -3,6 +3,7 @@ using CliFx.Infrastructure;
 using DotnetGitmoji.Commands;
 using DotnetGitmoji.Services;
 using NSubstitute;
+using Spectre.Console;
 
 namespace DotnetGitmoji.Tests;
 
@@ -21,10 +22,10 @@ public class ConfigCommandTests
     [Fact]
     public async Task ExecuteAsync_WhenBothGlobalAndLocalSpecified_ThrowsCommandException()
     {
-        var command = CreateCommand(true, true);
-        var console = new FakeInMemoryConsole();
+        ConfigCommand command = CreateCommand(true, true);
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("Cannot specify both", ex.Message, StringComparison.OrdinalIgnoreCase);
         await _configService.DidNotReceive().LoadAsync();
@@ -37,10 +38,10 @@ public class ConfigCommandTests
             .Returns(Task.FromException<Models.ToolConfiguration>(
                 new IOException("config file locked")));
 
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        ConfigCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("Failed to load configuration", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("config file locked", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -49,7 +50,7 @@ public class ConfigCommandTests
     [Fact]
     public void ValidateMaxTitleLengthInput_WhenEmpty_ReturnsSuccess()
     {
-        var result = ConfigCommand.ValidateMaxTitleLengthInput(string.Empty);
+        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput(string.Empty);
 
         Assert.True(result.Successful);
     }
@@ -57,7 +58,7 @@ public class ConfigCommandTests
     [Fact]
     public void ValidateMaxTitleLengthInput_WhenPositiveInteger_ReturnsSuccess()
     {
-        var result = ConfigCommand.ValidateMaxTitleLengthInput("72");
+        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput("72");
 
         Assert.True(result.Successful);
     }
@@ -69,7 +70,7 @@ public class ConfigCommandTests
     [InlineData("1.5")]
     public void ValidateMaxTitleLengthInput_WhenInvalidInput_ReturnsError(string input)
     {
-        var result = ConfigCommand.ValidateMaxTitleLengthInput(input);
+        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput(input);
 
         Assert.False(result.Successful);
         Assert.Contains(PositiveIntegerErrorFragment, result.Message, StringComparison.OrdinalIgnoreCase);
@@ -78,7 +79,7 @@ public class ConfigCommandTests
     [Fact]
     public void ValidateGitmojisUrl_WhenHttpsUrl_ReturnsSuccess()
     {
-        var result = ConfigCommand.ValidateGitmojisUrl("https://gitmoji.dev/api/gitmojis");
+        ValidationResult result = ConfigCommand.ValidateGitmojisUrl("https://gitmoji.dev/api/gitmojis");
 
         Assert.True(result.Successful);
     }
@@ -89,7 +90,7 @@ public class ConfigCommandTests
     [InlineData("not-a-url")]
     public void ValidateGitmojisUrl_WhenNonHttpsOrInvalidUrl_ReturnsError(string url)
     {
-        var result = ConfigCommand.ValidateGitmojisUrl(url);
+        ValidationResult result = ConfigCommand.ValidateGitmojisUrl(url);
 
         Assert.False(result.Successful);
         Assert.Contains(HttpsUrlErrorFragment, result.Message, StringComparison.OrdinalIgnoreCase);
@@ -98,7 +99,7 @@ public class ConfigCommandTests
     [Fact]
     public void FormatEmojiChoice_WhenEmoji_ReturnsEmojiLabel()
     {
-        var result = ConfigCommand.FormatEmojiChoice(Models.EmojiFormat.Emoji);
+        string result = ConfigCommand.FormatEmojiChoice(Models.EmojiFormat.Emoji);
 
         Assert.Contains("Emoji", result);
     }
@@ -106,7 +107,7 @@ public class ConfigCommandTests
     [Fact]
     public void FormatEmojiChoice_WhenCode_ReturnsCodeLabel()
     {
-        var result = ConfigCommand.FormatEmojiChoice(Models.EmojiFormat.Code);
+        string result = ConfigCommand.FormatEmojiChoice(Models.EmojiFormat.Code);
 
         Assert.Contains("Code", result);
     }
@@ -129,7 +130,7 @@ public class ConfigCommandTests
     [InlineData("single", new[] { "single" })]
     public void ParseScopes_WhenCommaSeparated_ReturnsTrimmedArray(string input, string[] expected)
     {
-        var result = ConfigCommand.ParseScopes(input);
+        string[]? result = ConfigCommand.ParseScopes(input);
 
         Assert.Equal(expected, result);
     }
@@ -137,7 +138,7 @@ public class ConfigCommandTests
     [Fact]
     public void DetermineTarget_WhenGlobalTrue_ReturnsGlobal()
     {
-        var command = CreateCommand(true);
+        ConfigCommand command = CreateCommand(true);
 
         Assert.Equal(Models.ConfigSaveTarget.Global, command.DetermineTarget());
     }
@@ -145,7 +146,7 @@ public class ConfigCommandTests
     [Fact]
     public void DetermineTarget_WhenLocalTrue_ReturnsLocal()
     {
-        var command = CreateCommand(local: true);
+        ConfigCommand command = CreateCommand(local: true);
 
         Assert.Equal(Models.ConfigSaveTarget.Local, command.DetermineTarget());
     }
@@ -153,7 +154,7 @@ public class ConfigCommandTests
     [Fact]
     public void DetermineTarget_WhenNeither_ReturnsAuto()
     {
-        var command = CreateCommand();
+        ConfigCommand command = CreateCommand();
 
         Assert.Equal(Models.ConfigSaveTarget.Auto, command.DetermineTarget());
     }

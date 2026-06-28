@@ -21,10 +21,12 @@ public sealed partial class RemoveCommand : ICommand
     {
         try
         {
-            var hookFile = await _gitService.FindHookFileAsync();
+            string? hookFile = await _gitService.FindHookFileAsync();
 
             if (hookFile is null)
+            {
                 throw new CommandException("No dotnet-gitmoji hook found.", 1);
+            }
 
             if (!hookFile.Contains(Path.Combine(".git", "hooks")))
             {

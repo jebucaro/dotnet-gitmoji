@@ -59,39 +59,47 @@ public sealed partial class CommitCommand : ICommand
         }
 
         if (!_promptService.IsInteractive)
+        {
             throw new CommandException(
                 "Cannot run in client mode without an interactive terminal.\n" +
                 "Use 'git commit' with the hook instead, or ensure stdin is connected to a TTY.", 1);
+        }
 
-        var config = await _configService.LoadAsync();
-        var gitmojis = await _gitmojiProvider.GetAllAsync();
+        ToolConfiguration config = await _configService.LoadAsync();
+        IReadOnlyList<Gitmoji> gitmojis = await _gitmojiProvider.GetAllAsync();
 
         ValidateCommandOptions(config);
         await EnsureStagedChangesAsync(config);
 
-        var selected = _promptService.SelectGitmoji(gitmojis, config.ShowSemverBadge);
-        var scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
-        var rawTitle = Title ?? _promptService.AskTitle(config);
+        Gitmoji selected = _promptService.SelectGitmoji(gitmojis, config.ShowSemverBadge);
+        string? scope = Scope ?? (config.ScopePrompt ? _promptService.AskScope(config.Scopes) : null);
+        string? rawTitle = Title ?? _promptService.AskTitle(config);
 
         if (string.IsNullOrWhiteSpace(rawTitle))
+        {
             throw new CommandException("A commit title is required.");
+        }
 
-        var promptedTitleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
+        string? promptedTitleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
         if (promptedTitleValidationError is not null)
+        {
             throw new CommandException(promptedTitleValidationError);
+        }
 
-        var title = config.CapitalizeTitle
+        string title = config.CapitalizeTitle
             ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
             : rawTitle;
 
-        var prefix = config.EmojiFormat == EmojiFormat.Emoji
+        string prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? selected.Emoji
             : selected.Code;
-        var commitMessage = BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
+        string commitMessage = BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
 
-        var body = Message;
+        string? body = Message;
         if (body is null && config.MessagePrompt)
+        {
             body = _promptService.AskMessage();
+        }
 
         string commitOutput;
         try
@@ -104,32 +112,42 @@ public sealed partial class CommitCommand : ICommand
         }
 
         if (!string.IsNullOrWhiteSpace(commitOutput))
+        {
             await console.Output.WriteAsync(commitOutput);
+        }
     }
 
     private void ValidateCommandOptions(ToolConfiguration config)
     {
         if (Title is not null)
         {
-            var titleValidationError = CommitTitlePolicy.ValidateExplicitTitle(Title, config);
+            string? titleValidationError = CommitTitlePolicy.ValidateExplicitTitle(Title, config);
             if (titleValidationError is not null)
+            {
                 throw new CommandException(titleValidationError);
+            }
         }
 
         if (Scope is not null)
         {
             if (!ScopePattern().IsMatch(Scope))
+            {
                 throw new CommandException(
                     "Scope contains invalid characters. Only alphanumeric, underscore and hyphen are allowed.");
+            }
+
             if (Scope.Length > PromptService.MaxScopeLength)
+            {
                 throw new CommandException(
                     $"Scope exceeds maximum length of {PromptService.MaxScopeLength} characters.");
+            }
         }
     }
 
     private async Task EnsureStagedChangesAsync(ToolConfiguration config)
     {
         if (config.AutoAdd)
+        {
             try
             {
                 await _gitService.StageAllAsync();
@@ -138,6 +156,7 @@ public sealed partial class CommitCommand : ICommand
             {
                 throw new CommandException($"Failed to auto-stage changes: {ex.Message}", 1);
             }
+        }
 
         bool hasStagedChanges;
         try
@@ -150,20 +169,22 @@ public sealed partial class CommitCommand : ICommand
         }
 
         if (!hasStagedChanges)
+        {
             throw new CommandException(
                 config.AutoAdd ? NoStagedChangesAfterAutoAddMessage : NoStagedChangesMessage, 1);
+        }
     }
 
     internal static string BuildSubject(string prefix, string? scope, string title, bool normalize)
     {
         if (normalize)
         {
-            var scopePart = string.IsNullOrWhiteSpace(scope) ? ": " : $" ({scope}): ";
+            string scopePart = string.IsNullOrWhiteSpace(scope) ? ": " : $" ({scope}): ";
             return $"{prefix}{scopePart}{title}";
         }
         else
         {
-            var scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
+            string scopePart = string.IsNullOrWhiteSpace(scope) ? "" : $"({scope}): ";
             return $"{prefix} {scopePart}{title}";
         }
     }

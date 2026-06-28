@@ -37,7 +37,7 @@ internal static partial class TtyConsoleInput
         const uint OPEN_EXISTING = 3;
         const int STD_INPUT_HANDLE = -10;
 
-        var handle = CreateFileW(
+        IntPtr handle = CreateFileW(
             "CONIN$",
             GENERIC_READ | GENERIC_WRITE,
             FILE_SHARE_READ_WRITE,
@@ -47,13 +47,19 @@ internal static partial class TtyConsoleInput
             IntPtr.Zero);
 
         if (handle == IntPtr.Zero || handle == new IntPtr(-1))
+        {
             return false;
+        }
 
         if (!SetStdHandle(STD_INPUT_HANDLE, handle))
+        {
             return false;
+        }
 
         if (!GetConsoleMode(handle, out _))
+        {
             return false;
+        }
 
         return true;
     }
@@ -62,12 +68,16 @@ internal static partial class TtyConsoleInput
     {
         const int O_RDONLY = 0;
 
-        var fd = Open("/dev/tty", O_RDONLY);
+        int fd = Open("/dev/tty", O_RDONLY);
         if (fd < 0)
+        {
             return false;
+        }
 
         if (Dup2(fd, 0) < 0)
+        {
             return false;
+        }
 
         return true;
     }

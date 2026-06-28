@@ -15,9 +15,9 @@ public class GitmojiFuzzyMatcherTests
     [Fact]
     public void RankGitmojis_WhenQueryIsEmpty_ReturnsOriginalOrder()
     {
-        var matcher = new GitmojiFuzzyMatcher();
+        GitmojiFuzzyMatcher matcher = new();
 
-        var result = matcher.RankGitmojis(Gitmojis, " ");
+        IReadOnlyList<Gitmoji> result = matcher.RankGitmojis(Gitmojis, " ");
 
         Assert.Equal(Gitmojis, result);
     }
@@ -25,9 +25,9 @@ public class GitmojiFuzzyMatcherTests
     [Fact]
     public void RankGitmojis_WhenQueryIsMisspelled_MatchesByFuzzyDescription()
     {
-        var matcher = new GitmojiFuzzyMatcher();
+        GitmojiFuzzyMatcher matcher = new();
 
-        var result = matcher.RankGitmojis(Gitmojis, "strcture");
+        IReadOnlyList<Gitmoji> result = matcher.RankGitmojis(Gitmojis, "strcture");
 
         Assert.NotEmpty(result);
         Assert.Equal(":art:", result[0].Code);
@@ -36,9 +36,9 @@ public class GitmojiFuzzyMatcherTests
     [Fact]
     public void RankGitmojis_WhenQueryMatchesCode_RanksCodeMatchFirst()
     {
-        var matcher = new GitmojiFuzzyMatcher();
+        GitmojiFuzzyMatcher matcher = new();
 
-        var result = matcher.RankGitmojis(Gitmojis, ":bug:");
+        IReadOnlyList<Gitmoji> result = matcher.RankGitmojis(Gitmojis, ":bug:");
 
         Assert.NotEmpty(result);
         Assert.Equal(":bug:", result[0].Code);
@@ -47,10 +47,10 @@ public class GitmojiFuzzyMatcherTests
     [Fact]
     public void RankScopes_WhenQueryIsMisspelled_MatchesClosestScopeFirst()
     {
-        var matcher = new GitmojiFuzzyMatcher();
-        var scopes = new[] { "core", "documentation", "api" };
+        GitmojiFuzzyMatcher matcher = new();
+        string[] scopes = new[] { "core", "documentation", "api" };
 
-        var result = matcher.RankScopes(scopes, "documnt");
+        IReadOnlyList<string> result = matcher.RankScopes(scopes, "documnt");
 
         Assert.NotEmpty(result);
         Assert.Equal("documentation", result[0]);
@@ -59,10 +59,10 @@ public class GitmojiFuzzyMatcherTests
     [Fact]
     public void RankScopes_WhenQueryHasNoSignal_ReturnsNoMatches()
     {
-        var matcher = new GitmojiFuzzyMatcher();
-        var scopes = new[] { "core", "documentation", "api" };
+        GitmojiFuzzyMatcher matcher = new();
+        string[] scopes = new[] { "core", "documentation", "api" };
 
-        var result = matcher.RankScopes(scopes, "zzzzzz");
+        IReadOnlyList<string> result = matcher.RankScopes(scopes, "zzzzzz");
 
         Assert.Empty(result);
     }
@@ -70,10 +70,10 @@ public class GitmojiFuzzyMatcherTests
     [Fact]
     public void RankGitmojis_WhenQueryIsSubsequenceOfDescription_ReturnsMatch()
     {
-        var matcher = new GitmojiFuzzyMatcher();
+        GitmojiFuzzyMatcher matcher = new();
 
         // "fxbg" is a subsequence of "Fix a bug." characters
-        var result = matcher.RankGitmojis(Gitmojis, "fxbg");
+        IReadOnlyList<Gitmoji> result = matcher.RankGitmojis(Gitmojis, "fxbg");
 
         Assert.NotEmpty(result);
         Assert.Equal(":bug:", result[0].Code);
@@ -82,10 +82,10 @@ public class GitmojiFuzzyMatcherTests
     [Fact]
     public void RankGitmojis_WhenQueryContainsMultipleTokens_MatchesMultiwordDescription()
     {
-        var matcher = new GitmojiFuzzyMatcher();
+        GitmojiFuzzyMatcher matcher = new();
 
         // Two-token query that matches "Improve structure"
-        var result = matcher.RankGitmojis(Gitmojis, "improve format");
+        IReadOnlyList<Gitmoji> result = matcher.RankGitmojis(Gitmojis, "improve format");
 
         Assert.NotEmpty(result);
         Assert.Equal(":art:", result[0].Code);
@@ -94,10 +94,10 @@ public class GitmojiFuzzyMatcherTests
     [Fact]
     public void RankScopes_WhenQueryMatchesScope_ReturnsScopeAboveThreshold()
     {
-        var matcher = new GitmojiFuzzyMatcher();
-        var scopes = new[] { "authentication", "database", "api" };
+        GitmojiFuzzyMatcher matcher = new();
+        string[] scopes = new[] { "authentication", "database", "api" };
 
-        var result = matcher.RankScopes(scopes, "auth");
+        IReadOnlyList<string> result = matcher.RankScopes(scopes, "auth");
 
         Assert.NotEmpty(result);
         Assert.Equal("authentication", result[0]);

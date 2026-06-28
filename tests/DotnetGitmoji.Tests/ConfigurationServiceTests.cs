@@ -9,7 +9,7 @@ public class ConfigurationServiceTests
     [Fact]
     public void ToolConfiguration_Defaults_MatchUpstream()
     {
-        var config = new ToolConfiguration();
+        ToolConfiguration config = new();
 
         Assert.False(config.MessagePrompt);
         Assert.False(config.ScopePrompt);
@@ -28,15 +28,15 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task LoadAsync_WhenNoConfigFileExists_ReturnsDefaults()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var config = await service.LoadAsync();
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
 
             Assert.False(config.MessagePrompt);
             Assert.Equal("https://gitmoji.dev/api/gitmojis", config.GitmojisUrl);
@@ -50,19 +50,19 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task LoadAsync_WhenRepoConfigExists_LoadsRepoConfig()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
-        var configJson = """{ "MessagePrompt": false, "CapitalizeTitle": false }""";
+        string configJson = """{ "MessagePrompt": false, "CapitalizeTitle": false }""";
         await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
             TestContext.Current.CancellationToken);
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var config = await service.LoadAsync();
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
 
             Assert.False(config.MessagePrompt);
             Assert.False(config.CapitalizeTitle);
@@ -76,8 +76,8 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task LoadAsync_WhenConfigHasMalformedJson_ReturnsDefaults()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
@@ -86,8 +86,8 @@ public class ConfigurationServiceTests
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var config = await service.LoadAsync();
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
 
             Assert.False(config.MessagePrompt);
         }
@@ -100,21 +100,21 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task CreateRepoConfigAsync_WhenNoConfigExists_CreatesFileWithDefaults()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var createdPath = await service.CreateRepoConfigAsync();
+            ConfigurationService service = new(gitService);
+            string? createdPath = await service.CreateRepoConfigAsync();
 
             Assert.NotNull(createdPath);
             Assert.True(File.Exists(createdPath));
 
-            var config = await service.LoadAsync();
-            var defaults = new ToolConfiguration();
+            ToolConfiguration config = await service.LoadAsync();
+            ToolConfiguration defaults = new();
             Assert.Equal(defaults.EmojiFormat, config.EmojiFormat);
             Assert.Equal(defaults.ScopePrompt, config.ScopePrompt);
             Assert.Equal(defaults.MessagePrompt, config.MessagePrompt);
@@ -134,19 +134,19 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task CreateRepoConfigAsync_WhenConfigAlreadyExists_ReturnsNull()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
-        var configPath = Path.Combine(tempDir, ".gitmojirc.json");
-        var originalContent = """{ "CapitalizeTitle": false }""";
+        string configPath = Path.Combine(tempDir, ".gitmojirc.json");
+        string originalContent = """{ "CapitalizeTitle": false }""";
         await File.WriteAllTextAsync(configPath, originalContent, TestContext.Current.CancellationToken);
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var createdPath = await service.CreateRepoConfigAsync();
+            ConfigurationService service = new(gitService);
+            string? createdPath = await service.CreateRepoConfigAsync();
 
             Assert.Null(createdPath);
             Assert.Equal(originalContent,
@@ -161,19 +161,19 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task LoadAsync_WhenConfigHasInvalidGitmojisUrl_FallsBackToDefault()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
-        var configJson = """{ "GitmojisUrl": "http://insecure.example.com/gitmojis" }""";
+        string configJson = """{ "GitmojisUrl": "http://insecure.example.com/gitmojis" }""";
         await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
             TestContext.Current.CancellationToken);
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var config = await service.LoadAsync();
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
 
             Assert.Equal("https://gitmoji.dev/api/gitmojis", config.GitmojisUrl);
         }
@@ -186,19 +186,19 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task LoadAsync_WhenConfigHasInvalidMaxTitleLength_FallsBackToDefault()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
-        var configJson = """{ "MaxTitleLength": 0 }""";
+        string configJson = """{ "MaxTitleLength": 0 }""";
         await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
             TestContext.Current.CancellationToken);
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var config = await service.LoadAsync();
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
 
             Assert.Equal(ToolConfiguration.DefaultMaxTitleLength, config.MaxTitleLength);
         }
@@ -211,19 +211,19 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task SaveAsync_WhenAutoTargetInGitRepo_SavesRepoFile()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var config = new ToolConfiguration { CapitalizeTitle = false };
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = new() { CapitalizeTitle = false };
 
             await service.SaveAsync(config, ConfigSaveTarget.Auto);
 
-            var savedPath = Path.Combine(tempDir, ".gitmojirc.json");
+            string savedPath = Path.Combine(tempDir, ".gitmojirc.json");
             Assert.True(File.Exists(savedPath));
         }
         finally
@@ -235,20 +235,20 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task SaveAsync_WhenAutoTargetAndGitServiceThrows_SavesGlobalConfig()
     {
-        var gitService = Substitute.For<IGitService>();
+        IGitService? gitService = Substitute.For<IGitService>();
         gitService.GetRepositoryRootAsync()
             .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
 
-        var globalPath = DotnetGitmojiPaths.GlobalConfigPath;
-        var hadGlobal = File.Exists(globalPath);
-        var backup = hadGlobal
+        string globalPath = DotnetGitmojiPaths.GlobalConfigPath;
+        bool hadGlobal = File.Exists(globalPath);
+        byte[]? backup = hadGlobal
             ? await File.ReadAllBytesAsync(globalPath, TestContext.Current.CancellationToken)
             : null;
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var config = new ToolConfiguration { CapitalizeTitle = false };
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = new() { CapitalizeTitle = false };
 
             await service.SaveAsync(config, ConfigSaveTarget.Auto);
 
@@ -257,24 +257,28 @@ public class ConfigurationServiceTests
         finally
         {
             if (backup is not null)
+            {
                 await File.WriteAllBytesAsync(globalPath, backup, TestContext.Current.CancellationToken);
+            }
             else if (!hadGlobal && File.Exists(globalPath))
+            {
                 File.Delete(globalPath);
+            }
         }
     }
 
     [Fact]
     public async Task SaveAsync_WhenLocalTarget_SavesRepoFile()
     {
-        var gitService = Substitute.For<IGitService>();
-        var tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         gitService.GetRepositoryRootAsync().Returns(tempDir);
 
         try
         {
-            var service = new ConfigurationService(gitService);
-            var config = new ToolConfiguration { CapitalizeTitle = false };
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = new() { CapitalizeTitle = false };
 
             await service.SaveAsync(config, ConfigSaveTarget.Local);
 
@@ -289,33 +293,37 @@ public class ConfigurationServiceTests
     [Fact]
     public async Task LoadAsync_WhenGlobalConfigExistsAndNoRepoConfig_LoadsGlobalConfig()
     {
-        var gitService = Substitute.For<IGitService>();
+        IGitService? gitService = Substitute.For<IGitService>();
         gitService.GetRepositoryRootAsync()
             .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
 
-        var globalPath = DotnetGitmojiPaths.GlobalConfigPath;
-        var hadGlobal = File.Exists(globalPath);
-        var backup = hadGlobal
+        string globalPath = DotnetGitmojiPaths.GlobalConfigPath;
+        bool hadGlobal = File.Exists(globalPath);
+        byte[]? backup = hadGlobal
             ? await File.ReadAllBytesAsync(globalPath, TestContext.Current.CancellationToken)
             : null;
 
         try
         {
             Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
-            var globalConfig = """{ "CapitalizeTitle": false }""";
+            string globalConfig = """{ "CapitalizeTitle": false }""";
             await File.WriteAllTextAsync(globalPath, globalConfig, TestContext.Current.CancellationToken);
 
-            var service = new ConfigurationService(gitService);
-            var config = await service.LoadAsync();
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
 
             Assert.False(config.CapitalizeTitle);
         }
         finally
         {
             if (backup is not null)
+            {
                 await File.WriteAllBytesAsync(globalPath, backup, TestContext.Current.CancellationToken);
+            }
             else if (File.Exists(globalPath))
+            {
                 File.Delete(globalPath);
+            }
         }
     }
 }

@@ -10,7 +10,9 @@ public static class CommitTitlePolicy
         ArgumentNullException.ThrowIfNull(config);
 
         if (config.MaxTitleLength is null || title.Length <= config.MaxTitleLength.Value)
+        {
             return null;
+        }
 
         return $"Title exceeds maximum length of {config.MaxTitleLength.Value} characters.";
     }
@@ -21,14 +23,18 @@ public static class CommitTitlePolicy
         ArgumentNullException.ThrowIfNull(config);
 
         if (config.MaxTitleLength is null || title.Length <= config.MaxTitleLength.Value)
+        {
             return new CommitTitlePromptResult(title, false, false, config.MaxTitleLength);
+        }
 
         if (!config.TrimTitleWhenExceeded)
+        {
             return new CommitTitlePromptResult(title, true, false, config.MaxTitleLength);
+        }
 
-        var maxTitleLength = config.MaxTitleLength.Value;
-        var lastSpace = title.LastIndexOf(' ', maxTitleLength - 1);
-        var trimmedTitle = lastSpace > 0 ? title[..lastSpace] : title[..maxTitleLength];
+        int maxTitleLength = config.MaxTitleLength.Value;
+        int lastSpace = title.LastIndexOf(' ', maxTitleLength - 1);
+        string trimmedTitle = lastSpace > 0 ? title[..lastSpace] : title[..maxTitleLength];
 
         return new CommitTitlePromptResult(trimmedTitle, true, true, maxTitleLength);
     }

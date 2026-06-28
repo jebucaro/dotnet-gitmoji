@@ -46,10 +46,14 @@ public sealed partial class HookCommand : ICommand
     public async ValueTask ExecuteAsync(IConsole console)
     {
         if (ShouldSkipCommit(CommitSource, CommitMessageFile))
+        {
             return;
+        }
 
         if (!File.Exists(CommitMessageFile))
+        {
             throw new CommandException($"Commit message file not found: {CommitMessageFile}");
+        }
 
         CommitMessageContent commitMessage;
         try
@@ -63,18 +67,20 @@ public sealed partial class HookCommand : ICommand
             return;
         }
 
-        var config = await _configService.LoadAsync();
-        var gitmojis = await _gitmojiProvider.GetAllAsync();
+        ToolConfiguration config = await _configService.LoadAsync();
+        IReadOnlyList<Gitmoji> gitmojis = await _gitmojiProvider.GetAllAsync();
 
-        var result = _validator.Validate(commitMessage, gitmojis);
+        ValidationResult result = _validator.Validate(commitMessage, gitmojis);
 
         if (result.IsValid)
         {
-            var missingScope = config.ScopePrompt && result.ParsedScope is null;
-            var missingBody = config.MessagePrompt && result.ParsedBody is null;
+            bool missingScope = config.ScopePrompt && result.ParsedScope is null;
+            bool missingBody = config.MessagePrompt && result.ParsedBody is null;
 
             if (!missingScope && !missingBody)
+            {
                 return;
+            }
 
             await HandleIncompleteMessageAsync(console, result, config, missingScope, missingBody);
             return;
@@ -88,9 +94,11 @@ public sealed partial class HookCommand : ICommand
     private static bool ShouldSkipCommit(string? commitSource, string commitMessageFile)
     {
         if (commitSource is "merge" or "squash" or "commit")
+        {
             return true;
+        }
 
-        var gitDir = Path.GetDirectoryName(Path.GetFullPath(commitMessageFile))!;
+        string gitDir = Path.GetDirectoryName(Path.GetFullPath(commitMessageFile))!;
         return Directory.Exists(Path.Combine(gitDir, "rebase-merge")) ||
                Directory.Exists(Path.Combine(gitDir, "rebase-apply"));
     }
@@ -106,7 +114,7 @@ public sealed partial class HookCommand : ICommand
         {
             if (config.EnforceConvention)
             {
-                var missing = BuildMissingPartsList(missingScope, missingBody);
+                string missing = BuildMissingPartsList(missingScope, missingBody);
                 throw new CommandException(
                     $"dotnet-gitmoji: commit rejected — {missing}.\n" +
                     "Add the required parts to your commit message or disable the corresponding prompt option.",
@@ -117,21 +125,21 @@ public sealed partial class HookCommand : ICommand
             return;
         }
 
-        var scope = result.ParsedScope
-                    ?? (missingScope ? _promptService.AskScope(config.Scopes) : null);
-        var body = result.ParsedBody
-                   ?? (missingBody ? _promptService.AskMessage() : null);
+        string? scope = result.ParsedScope
+                        ?? (missingScope ? _promptService.AskScope(config.Scopes) : null);
+        string? body = result.ParsedBody
+                       ?? (missingBody ? _promptService.AskMessage() : null);
 
-        var prefix = config.EmojiFormat == EmojiFormat.Emoji
+        string prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? result.MatchedGitmoji!.Emoji
             : result.MatchedGitmoji!.Code;
 
-        var rawTitle = result.ParsedTitle ?? string.Empty;
-        var title = config.CapitalizeTitle && rawTitle.Length > 0
+        string rawTitle = result.ParsedTitle ?? string.Empty;
+        string title = config.CapitalizeTitle && rawTitle.Length > 0
             ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
             : rawTitle;
 
-        var newSubject = CommitCommand.BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
+        string newSubject = CommitCommand.BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
 
         try
         {
@@ -152,26 +160,28 @@ public sealed partial class HookCommand : ICommand
         if (!_promptService.IsInteractive)
         {
             if (config.EnforceConvention)
+            {
                 throw new CommandException(
                     "dotnet-gitmoji: commit rejected — message does not follow the gitmoji convention.\n" +
                     "Start your commit title with a gitmoji emoji or shortcode (e.g. \":bug: Fix login crash\").",
                     1);
+            }
 
             await console.Error.WriteLineAsync(NoInteractiveTerminalMessage);
             return;
         }
 
-        var selectedGitmoji = _promptService.SelectGitmoji(gitmojis, config.ShowSemverBadge);
+        Gitmoji selectedGitmoji = _promptService.SelectGitmoji(gitmojis, config.ShowSemverBadge);
 
-        var prefix = config.EmojiFormat == EmojiFormat.Emoji
+        string prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? selectedGitmoji.Emoji
             : selectedGitmoji.Code;
 
-        var scope = config.ScopePrompt
+        string? scope = config.ScopePrompt
             ? _promptService.AskScope(config.Scopes)
             : null;
 
-        var rawTitle = _promptService.AskTitle(config, message);
+        string? rawTitle = _promptService.AskTitle(config, message);
 
         if (string.IsNullOrWhiteSpace(rawTitle))
         {
@@ -180,7 +190,7 @@ public sealed partial class HookCommand : ICommand
             return;
         }
 
-        var titleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
+        string? titleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
         if (titleValidationError is not null)
         {
             await console.Error.WriteLineAsync(
@@ -188,12 +198,12 @@ public sealed partial class HookCommand : ICommand
             return;
         }
 
-        var title = config.CapitalizeTitle
+        string title = config.CapitalizeTitle
             ? char.ToUpper(rawTitle[0]) + rawTitle[1..]
             : rawTitle;
-        var newSubject = CommitCommand.BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
+        string newSubject = CommitCommand.BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
 
-        var body = config.MessagePrompt ? _promptService.AskMessage() : null;
+        string? body = config.MessagePrompt ? _promptService.AskMessage() : null;
 
         try
         {
@@ -208,9 +218,15 @@ public sealed partial class HookCommand : ICommand
     private static string BuildMissingPartsList(bool missingScope, bool missingBody)
     {
         if (missingScope && missingBody)
+        {
             return "scope and message body are required";
+        }
+
         if (missingScope)
+        {
             return "scope is required (scopePrompt is enabled)";
+        }
+
         return "message body is required (messagePrompt is enabled)";
     }
 }

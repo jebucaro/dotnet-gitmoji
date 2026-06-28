@@ -23,29 +23,25 @@ public class CommitCommandValidationTests
         _gitService.HasStagedChangesAsync().Returns(true);
         _promptService.IsInteractive.Returns(true);
         _configService.LoadAsync().Returns(new ToolConfiguration());
-        _gitmojiProvider.GetAllAsync().Returns(new[]
-        {
-            new Gitmoji("🎨", "entity", ":art:", "desc", "art", null)
-        });
+        _gitmojiProvider.GetAllAsync().Returns(new[] { new Gitmoji("🎨", "entity", ":art:", "desc", "art", null) });
     }
 
     private CommitCommand CreateCommand(string? title = null, string? scope = null)
     {
         return new CommitCommand(_gitmojiProvider, _promptService, _configService, _gitService)
         {
-            Title = title,
-            Scope = scope
+            Title = title, Scope = scope
         };
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenTitleExceedsMaxLength_ThrowsCommandException()
     {
-        var longTitle = new string('a', ToolConfiguration.DefaultMaxTitleLength + 1);
-        var command = CreateCommand(longTitle);
-        var console = new FakeInMemoryConsole();
+        string longTitle = new('a', ToolConfiguration.DefaultMaxTitleLength + 1);
+        CommitCommand command = CreateCommand(longTitle);
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("maximum length", ex.Message);
     }
@@ -55,11 +51,11 @@ public class CommitCommandValidationTests
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { MaxTitleLength = null });
         _gitService.HasStagedChangesAsync().Returns(false);
-        var longTitle = new string('a', ToolConfiguration.DefaultMaxTitleLength + 20);
-        var command = CreateCommand(longTitle);
-        var console = new FakeInMemoryConsole();
+        string longTitle = new('a', ToolConfiguration.DefaultMaxTitleLength + 20);
+        CommitCommand command = CreateCommand(longTitle);
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.DoesNotContain("maximum length", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -68,10 +64,10 @@ public class CommitCommandValidationTests
     public async Task ExecuteAsync_WhenNoStagedChanges_ThrowsFriendlyCommandException()
     {
         _gitService.HasStagedChangesAsync().Returns(false);
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("No staged changes found", ex.Message);
         Assert.Contains("enable autoAdd", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -82,10 +78,10 @@ public class CommitCommandValidationTests
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { AutoAdd = true });
         _gitService.HasStagedChangesAsync().Returns(false);
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("after autoAdd", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("enable autoAdd", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -97,10 +93,10 @@ public class CommitCommandValidationTests
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { AutoAdd = true });
         _gitService.StageAllAsync().Returns(Task.FromException(new InvalidOperationException("permission denied")));
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("Failed to auto-stage changes", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("permission denied", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -112,10 +108,10 @@ public class CommitCommandValidationTests
     {
         _gitService.HasStagedChangesAsync()
             .Returns(Task.FromException<bool>(new InvalidOperationException("git not available")));
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("Failed to check staged changes", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("git not available", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -124,10 +120,10 @@ public class CommitCommandValidationTests
     [Fact]
     public async Task ExecuteAsync_WhenScopeHasInvalidChars_ThrowsCommandException()
     {
-        var command = CreateCommand("test", "scope@");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("test", "scope@");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("invalid characters", ex.Message);
     }
@@ -135,11 +131,11 @@ public class CommitCommandValidationTests
     [Fact]
     public async Task ExecuteAsync_WhenScopeExceedsMaxLength_ThrowsCommandException()
     {
-        var longScope = new string('a', PromptService.MaxScopeLength + 1);
-        var command = CreateCommand("test", longScope);
-        var console = new FakeInMemoryConsole();
+        string longScope = new('a', PromptService.MaxScopeLength + 1);
+        CommitCommand command = CreateCommand("test", longScope);
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains("maximum length", ex.Message);
     }
@@ -153,8 +149,8 @@ public class CommitCommandValidationTests
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
 
-        var command = CreateCommand(); // No title arg
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand(); // No title arg
+        FakeInMemoryConsole console = new();
 
         await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
@@ -169,8 +165,8 @@ public class CommitCommandValidationTests
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
         _gitService.HasStagedChangesAsync().Returns(false);
 
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
         await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
@@ -181,10 +177,10 @@ public class CommitCommandValidationTests
     public async Task ExecuteAsync_WhenHookIsInstalled_ThrowsCommandException()
     {
         _gitService.IsHookInstalledAsync().Returns(true);
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains(HookInstalledFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -193,10 +189,10 @@ public class CommitCommandValidationTests
     public async Task ExecuteAsync_WhenNotInteractive_ThrowsCommandException()
     {
         _promptService.IsInteractive.Returns(false);
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
-        var ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
+        CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         Assert.Contains(NotInteractiveFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -208,8 +204,8 @@ public class CommitCommandValidationTests
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
 
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -226,8 +222,8 @@ public class CommitCommandValidationTests
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
 
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -246,8 +242,8 @@ public class CommitCommandValidationTests
         _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
 
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
@@ -262,8 +258,8 @@ public class CommitCommandValidationTests
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
         _promptService.AskMessage().Returns("some body");
 
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -278,8 +274,8 @@ public class CommitCommandValidationTests
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
 
-        var command = CreateCommand("fix something");
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand("fix something");
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
@@ -289,15 +285,15 @@ public class CommitCommandValidationTests
     [Fact]
     public async Task ExecuteAsync_WhenScopePromptIsTrueAndPredefinedScopes_PassesScopesToPrompt()
     {
-        var predefinedScopes = new[] { "api", "core" };
+        string[] predefinedScopes = new[] { "api", "core" };
         _configService.LoadAsync().Returns(new ToolConfiguration { ScopePrompt = true, Scopes = predefinedScopes });
         _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
         _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
 
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        CommitCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
@@ -317,7 +313,7 @@ public class CommitCommandValidationTests
     public void BuildSubject_ProducesCorrectFormat(
         string prefix, string? scope, string title, bool normalize, string expected)
     {
-        var result = CommitCommand.BuildSubject(prefix, scope, title, normalize);
+        string result = CommitCommand.BuildSubject(prefix, scope, title, normalize);
 
         Assert.Equal(expected, result);
     }

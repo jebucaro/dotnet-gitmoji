@@ -25,12 +25,12 @@ public class UpdateCommandTests
         {
             new Gitmoji("🎨", "entity", ":art:", "Improve structure", "art", null)
         });
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        UpdateCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
-        var output = console.ReadOutputString();
+        string output = console.ReadOutputString();
         Assert.Contains(SuccessMessageFragment, output, StringComparison.OrdinalIgnoreCase);
         await _gitmojiProvider.Received(1).ForceRefreshAsync();
     }
@@ -40,8 +40,8 @@ public class UpdateCommandTests
     {
         _gitmojiProvider.ForceRefreshAsync()
             .Returns(Task.FromException<IReadOnlyList<Gitmoji>>(new InvalidOperationException("network error")));
-        var command = CreateCommand();
-        var console = new FakeInMemoryConsole();
+        UpdateCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => command.ExecuteAsync(console).AsTask());
     }

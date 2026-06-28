@@ -35,20 +35,26 @@ public sealed partial class InitCommand : ICommand
         try
         {
             if (await _gitService.IsHookInstalledAsync())
+            {
                 throw new CommandException("The prepare-commit-msg hook is already installed.", 1);
+            }
 
-            var huskySetupMode = ParseHuskySetupMode();
-            var huskyKind = await _gitService.DetectHuskyKindAsync();
+            HuskySetupMode? huskySetupMode = ParseHuskySetupMode();
+            HuskyInstallKind huskyKind = await _gitService.DetectHuskyKindAsync();
 
             await InstallHookAsync(huskyKind, huskySetupMode);
 
             if (CreateConfig)
             {
-                var createdPath = await _configurationService.CreateRepoConfigAsync();
+                string? createdPath = await _configurationService.CreateRepoConfigAsync();
                 if (createdPath is null)
+                {
                     AnsiConsole.MarkupLine("[yellow]![/] [grey].gitmojirc.json[/] already exists, skipping.");
+                }
                 else
+                {
                     AnsiConsole.MarkupLine("[green]✓[/] [grey].gitmojirc.json[/] created with defaults.");
+                }
             }
         }
         catch (InvalidOperationException ex)
@@ -72,14 +78,20 @@ public sealed partial class InitCommand : ICommand
         if (huskyKind is HuskyInstallKind.HuskyNetTaskRunner or HuskyInstallKind.HuskyNetShell)
         {
             if (huskySetupMode is null)
+            {
                 throw new CommandException(
                     "Husky.Net detected. Select setup mode with '--mode shell' or '--mode task-runner'.",
                     1);
+            }
 
             if (huskySetupMode == HuskySetupMode.Shell)
+            {
                 await _gitService.InstallHuskyNetShellHookAsync();
+            }
             else
+            {
                 await _gitService.InstallHuskyNetTaskRunnerHookAsync();
+            }
 
             AnsiConsole.MarkupLine(
                 $"[green]✓[/] Husky.Net [grey]prepare-commit-msg[/] hook configured " +
@@ -88,7 +100,9 @@ public sealed partial class InitCommand : ICommand
         else
         {
             if (huskySetupMode is not null)
+            {
                 throw new CommandException("The --mode option is only valid when Husky.Net is detected.", 1);
+            }
 
             await _gitService.InstallHookDirectAsync();
             AnsiConsole.MarkupLine("[green]✓[/] [grey]prepare-commit-msg[/] hook installed successfully.");
@@ -98,9 +112,11 @@ public sealed partial class InitCommand : ICommand
     private HuskySetupMode? ParseHuskySetupMode()
     {
         if (string.IsNullOrWhiteSpace(Mode))
+        {
             return null;
+        }
 
-        var normalizedMode = Mode.Trim().ToLowerInvariant();
+        string normalizedMode = Mode.Trim().ToLowerInvariant();
         return normalizedMode switch
         {
             ShellModeValue => HuskySetupMode.Shell,
