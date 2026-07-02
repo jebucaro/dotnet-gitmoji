@@ -13,23 +13,25 @@ namespace DotnetGitmoji.Commands;
 public sealed partial class ConfigCommand : ICommand
 {
     private readonly IConfigurationService _configurationService;
+    private readonly IGitService _gitService;
 
-    public ConfigCommand(IConfigurationService configurationService)
+    public ConfigCommand(IConfigurationService configurationService, IGitService gitService)
     {
         _configurationService = configurationService;
+        _gitService = gitService;
     }
-
-    [CommandOption("global", 'g', Description = "Save to global config (~/.dotnet-gitmoji/config.json)")]
-    public bool Global { get; set; }
-
-    [CommandOption("local", 'l', Description = "Save to local repo config (.gitmojirc.json)")]
-    public bool Local { get; set; }
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        if (Global && Local)
+        // The wizard saves to .gitmojirc.json at the repo root, so like init it is part of the
+        // in-repo setup flow.
+        try
         {
-            throw new CommandException("Cannot specify both --global and --local.", 1);
+            await _gitService.GetRepositoryRootAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new CommandException(ex.Message, 1);
         }
 
         ToolConfiguration config = null!;
@@ -67,16 +69,9 @@ public sealed partial class ConfigCommand : ICommand
         bool messagePrompt = await AnsiConsole.ConfirmAsync("Prompt for commit message?", config.MessagePrompt);
         (int? maxTitleLength, bool trimTitleWhenExceeded) = await PromptMaxTitleLengthAsync(config, theme);
 
-        WriteSection(theme, "Display", "Selector contents and color theme");
+        WriteSection(theme, "Display", "Selector contents");
         bool showSemverBadge =
             await AnsiConsole.ConfirmAsync("Show semver badge in gitmoji selector?", config.ShowSemverBadge);
-        string selectedTheme = await AnsiConsole.PromptAsync(
-            new SelectionPrompt<string>()
-                .Title("Select color theme:")
-                .PageSize(Themes.Names.Count + 1)
-                .AddChoices(Themes.Names));
-        AnsiConsole.MarkupLine(
-            $"Theme: {Markup.Escape(selectedTheme)} (personal setting, saved to the global config)");
 
         WriteSection(theme, "Git Behavior", "Staging, signing, and convention enforcement");
         bool autoAdd =
@@ -93,6 +88,16 @@ public sealed partial class ConfigCommand : ICommand
                 .DefaultValue(config.GitmojisUrl)
                 .Validate(url => ValidateGitmojisUrl(url, theme)));
 
+        WriteSection(theme, "Theme",
+            "Personal preference, saved to your global config, never to the team's .gitmojirc.json");
+        string selectedTheme = await AnsiConsole.PromptAsync(
+            new SelectionPrompt<string>()
+                .Title("Select color theme:")
+                .PageSize(Themes.Names.Count + 1)
+                .AddChoices(Themes.Names));
+        AnsiConsole.MarkupLine(
+            $"Theme: {Markup.Escape(selectedTheme)} (personal setting, saved to the global config)");
+
         config.EmojiFormat = emojiFormat;
         config.NormalizeCommitFormat = normalizeCommitFormat;
         config.CapitalizeTitle = capitalizeTitle;
@@ -102,20 +107,19 @@ public sealed partial class ConfigCommand : ICommand
         config.MaxTitleLength = maxTitleLength;
         config.TrimTitleWhenExceeded = trimTitleWhenExceeded;
         config.ShowSemverBadge = showSemverBadge;
-        config.Theme = null; // personal setting — never written to the target file, see below
+        config.Theme = null; // personal setting — kept out of .gitmojirc.json, saved globally below
         config.AutoAdd = autoAdd;
         config.SignedCommit = signedCommit;
         config.EnforceConvention = enforceConvention;
         config.GitmojisUrl = gitmojisUrl;
 
-        ConfigSaveTarget target = DetermineTarget();
         try
         {
             await AnsiConsole.Status()
                 .StartAsync("Saving configuration...",
                     async _ =>
                     {
-                        await _configurationService.SaveAsync(config, target);
+                        await _configurationService.SaveAsync(config);
                         await _configurationService.SaveThemePreferenceAsync(selectedTheme);
                     });
         }
@@ -124,29 +128,8 @@ public sealed partial class ConfigCommand : ICommand
             throw new CommandException($"Failed to save configuration: {ex.Message}", 1);
         }
 
-        string location = target switch
-        {
-            ConfigSaveTarget.Global => "~/.dotnet-gitmoji/config.json",
-            ConfigSaveTarget.Local => ".gitmojirc.json",
-            _ => "config file"
-        };
         AnsiConsole.MarkupLine(
-            $"[{theme.SuccessMarkup}]✔[/] Configuration saved to [{theme.MutedMarkup}]{Markup.Escape(location)}[/]");
-    }
-
-    internal ConfigSaveTarget DetermineTarget()
-    {
-        if (Global)
-        {
-            return ConfigSaveTarget.Global;
-        }
-
-        if (Local)
-        {
-            return ConfigSaveTarget.Local;
-        }
-
-        return ConfigSaveTarget.Auto;
+            $"[{theme.SuccessMarkup}]✔[/] Configuration saved to [{theme.MutedMarkup}].gitmojirc.json[/]");
     }
 
     private static async Task<(int? MaxTitleLength, bool TrimTitleWhenExceeded)> PromptMaxTitleLengthAsync(

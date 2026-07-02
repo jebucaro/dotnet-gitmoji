@@ -31,20 +31,19 @@ public sealed class ConfigurationService : IConfigurationService
     public async Task<ToolConfiguration> LoadAsync()
     {
         string? localPath = await FindLocalConfigPathAsync();
+        ToolConfiguration config;
         if (localPath is not null)
         {
-            ToolConfiguration config = await LoadFromPathAsync(localPath);
+            config = await LoadFromPathAsync(localPath);
             await DiscardRepoThemeAsync(config, localPath);
-            config.Theme = await ResolveEnvironmentThemeAsync() ?? await TryReadGlobalThemeAsync();
-            return config;
+        }
+        else
+        {
+            config = new ToolConfiguration();
         }
 
-        string globalConfigPath = DotnetGitmojiPaths.GlobalConfigPath;
-        ToolConfiguration result = File.Exists(globalConfigPath)
-            ? await LoadFromPathAsync(globalConfigPath)
-            : new ToolConfiguration();
-        result.Theme = await ResolveEnvironmentThemeAsync() ?? result.Theme;
-        return result;
+        config.Theme = await ResolveEnvironmentThemeAsync() ?? await TryReadGlobalThemeAsync();
+        return config;
     }
 
     // The theme is a personal setting: a repo .gitmojirc.json is shared with the whole team,
@@ -57,8 +56,8 @@ public sealed class ConfigurationService : IConfigurationService
         }
 
         await Console.Error.WriteLineAsync(
-            $"Note: theme in {path} is ignored — the theme is a personal setting. " +
-            $"Set {ThemeEnvironmentVariable} or run 'dotnet-gitmoji config --global' instead.");
+            $"Note: theme in {path} is ignored because the theme is a personal setting. " +
+            $"Set {ThemeEnvironmentVariable} or run 'dotnet-gitmoji config' to pick a theme.");
         config.Theme = null;
     }
 
@@ -80,9 +79,9 @@ public sealed class ConfigurationService : IConfigurationService
         return null;
     }
 
-    // Lightweight read of only the theme from the global config, used when a repo config is the
-    // active one. Deliberately avoids LoadFromPathAsync so unrelated fields of the inactive file
-    // don't produce warnings.
+    // The global config carries nothing but the personal theme preference; shared settings live in
+    // each repo's .gitmojirc.json. Reads the raw JSON so legacy files with extra keys still yield
+    // their theme, with a note nudging the user to move the rest into a repo config.
     private static async Task<string?> TryReadGlobalThemeAsync()
     {
         string globalConfigPath = DotnetGitmojiPaths.GlobalConfigPath;
@@ -93,9 +92,38 @@ public sealed class ConfigurationService : IConfigurationService
 
         try
         {
-            await using FileStream stream = File.OpenRead(globalConfigPath);
-            ToolConfiguration? config = await JsonSerializer.DeserializeAsync<ToolConfiguration>(stream, ReadOptions);
-            string? theme = config?.Theme;
+            string? theme = null;
+            bool hasOtherKeys = false;
+            await using (FileStream stream = File.OpenRead(globalConfigPath))
+            {
+                using JsonDocument document = await JsonDocument.ParseAsync(stream);
+                if (document.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    return null;
+                }
+
+                foreach (JsonProperty property in document.RootElement.EnumerateObject())
+                {
+                    if (string.Equals(property.Name, "theme", StringComparison.OrdinalIgnoreCase))
+                    {
+                        theme = property.Value.ValueKind == JsonValueKind.String
+                            ? property.Value.GetString()
+                            : null;
+                    }
+                    else
+                    {
+                        hasOtherKeys = true;
+                    }
+                }
+            }
+
+            if (hasOtherKeys)
+            {
+                await Console.Error.WriteLineAsync(
+                    $"Note: only 'theme' is read from {globalConfigPath}. Shared settings belong in " +
+                    "each repo's .gitmojirc.json; run 'dotnet-gitmoji config' inside a repo to configure them.");
+            }
+
             if (theme is null || Themes.IsKnown(theme))
             {
                 return theme;
@@ -116,13 +144,23 @@ public sealed class ConfigurationService : IConfigurationService
         ArgumentNullException.ThrowIfNull(theme);
 
         string globalConfigPath = DotnetGitmojiPaths.GlobalConfigPath;
-        ToolConfiguration config = File.Exists(globalConfigPath)
-            ? await LoadFromPathAsync(globalConfigPath)
-            : new ToolConfiguration();
-
-        config.Theme = theme;
-        await SaveAsync(config, ConfigSaveTarget.Global);
+        try
+        {
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await using FileStream stream = File.Create(globalConfigPath);
+            await JsonSerializer.SerializeAsync(stream, new GlobalPreferences(theme), WriteOptions);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            await Console.Error.WriteLineAsync(
+                $"Error: Permission denied writing config to {globalConfigPath}. " +
+                "Check file/directory permissions.");
+            throw;
+        }
     }
+
+    // The entire content of the global config file: the theme is the only personal setting.
+    private sealed record GlobalPreferences(string Theme);
 
     private async Task<string?> FindLocalConfigPathAsync()
     {
@@ -138,34 +176,14 @@ public sealed class ConfigurationService : IConfigurationService
         }
     }
 
-    public async Task SaveAsync(ToolConfiguration config, ConfigSaveTarget target = ConfigSaveTarget.Auto)
+    public async Task SaveAsync(ToolConfiguration config)
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        string savePath;
-        if (target == ConfigSaveTarget.Global)
-        {
-            savePath = DotnetGitmojiPaths.GlobalConfigPath;
-        }
-        else
-        {
-            try
-            {
-                savePath = Path.Combine(await _gitService.GetRepositoryRootAsync(), ".gitmojirc.json");
-            }
-            catch
-            {
-                savePath = DotnetGitmojiPaths.GlobalConfigPath; // not in a git repo
-            }
-        }
+        string savePath = Path.Combine(await _gitService.GetRepositoryRootAsync(), ".gitmojirc.json");
 
         try
         {
-            if (savePath == DotnetGitmojiPaths.GlobalConfigPath)
-            {
-                Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
-            }
-
             await using FileStream stream = File.Create(savePath);
             await JsonSerializer.SerializeAsync(stream, config, WriteOptions);
         }

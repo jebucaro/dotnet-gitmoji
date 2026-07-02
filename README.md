@@ -181,8 +181,10 @@ dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth 
 dotnet tool run dotnet-gitmoji config
 ```
 
-Walks through every option and saves to `.gitmojirc.json` in the repo root (creating it if absent). Use `--global` to
-save to the personal global config (`~/.dotnet-gitmoji/config.json`) instead.
+Walks through every option and saves to `.gitmojirc.json` in the repo root (creating it if absent). Like the rest
+of the setup flow, the wizard runs inside a git repository. The final question, the color theme, is the exception
+to the shared file: it is a personal setting, not a team one, and is always saved to the global config
+(`~/.dotnet-gitmoji/config.json`).
 
 ### Manual configuration
 
@@ -214,44 +216,77 @@ Example file:
 
 ### Configuration reference
 
-| Key                     | Type                  | Default                            | Description                                                                                                 |
-|-------------------------|-----------------------|------------------------------------|-------------------------------------------------------------------------------------------------------------|
-| `emojiFormat`           | `"Emoji"` \| `"Code"` | `"Emoji"`                          | Prefix with the emoji character (`🐛`) or its shortcode (`:bug:`)                                           |
-| `scopePrompt`           | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): ...`)                                                          |
-| `messagePrompt`         | `bool`                | `false`                            | Prompt for an optional commit message body                                                                  |
-| `capitalizeTitle`       | `bool`                | `true`                             | Automatically capitalize the first letter of the commit title                                               |
-| `maxTitleLength`        | `int` \| `null`       | `48`                               | Maximum allowed commit title length; set to `null` to disable length enforcement                            |
-| `trimTitleWhenExceeded` | `bool`                | `true`                             | In interactive prompts, automatically trim titles longer than `maxTitleLength` at a word boundary           |
-| `gitmojisUrl`           | `string`              | `https://gitmoji.dev/api/gitmojis` | URL to fetch the gitmoji list from                                                                          |
-| `autoAdd`               | `bool`                | `false`                            | Stage all changes before committing (client mode only)                                                      |
-| `signedCommit`          | `bool`                | `false`                            | Sign commits with GPG (client mode only)                                                                    |
-| `scopes`                | `string[]` \| `null`  | `null`                             | Predefined scope suggestions shown when `scopePrompt` is `true`                                             |
-| `enforceConvention`     | `bool`                | `false`                            | Reject commits that don't start with a gitmoji when no interactive terminal is available (e.g. IDE commits) |
-| `showSemverBadge`       | `bool`                | `true`                             | Show the semver badge next to each gitmoji in the interactive picker, list, and search results              |
-| `normalizeCommitFormat` | `bool`                | `false`                            | Produce `emoji: title` (with colon) instead of `emoji title`, aligning with the conventional commit format  |
+| Key                     | Type                  | Default                            | Description                                                                                                     |
+|-------------------------|-----------------------|------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `emojiFormat`           | `"Emoji"` \| `"Code"` | `"Emoji"`                          | Prefix with the emoji character (`🐛`) or its shortcode (`:bug:`)                                               |
+| `scopePrompt`           | `bool`                | `false`                            | Prompt for a commit scope (e.g. `feat(auth): ...`)                                                              |
+| `messagePrompt`         | `bool`                | `false`                            | Prompt for an optional commit message body                                                                      |
+| `capitalizeTitle`       | `bool`                | `true`                             | Automatically capitalize the first letter of the commit title                                                   |
+| `maxTitleLength`        | `int` \| `null`       | `48`                               | Maximum allowed commit title length; set to `null` to disable length enforcement                                |
+| `trimTitleWhenExceeded` | `bool`                | `true`                             | In interactive prompts, automatically trim titles longer than `maxTitleLength` at a word boundary               |
+| `gitmojisUrl`           | `string`              | `https://gitmoji.dev/api/gitmojis` | URL to fetch the gitmoji list from                                                                              |
+| `autoAdd`               | `bool`                | `false`                            | Stage all changes before committing (client mode only)                                                          |
+| `signedCommit`          | `bool`                | `false`                            | Sign commits with GPG (client mode only)                                                                        |
+| `scopes`                | `string[]` \| `null`  | `null`                             | Predefined scope suggestions shown when `scopePrompt` is `true`                                                 |
+| `enforceConvention`     | `bool`                | `false`                            | Reject commits that don't start with a gitmoji when no interactive terminal is available (e.g. IDE commits)     |
+| `showSemverBadge`       | `bool`                | `true`                             | Show the semver badge next to each gitmoji in the interactive picker, list, and search results                  |
+| `normalizeCommitFormat` | `bool`                | `false`                            | Produce `emoji: title` (with colon) instead of `emoji title`, aligning with the conventional commit format      |
+| `theme`                 | `string`              | `"default"`                        | Color theme for all tool output, a **personal setting stored only in the global config**; see [Themes](#themes) |
+
+### Themes
+
+The theme selects the color palette used by the interactive picker, prompts, and command output. Because
+`.gitmojirc.json` is shared with your whole team, the theme is treated as a **personal setting** and is resolved
+from personal sources only, in this order:
+
+1. `DOTNET_GITMOJI_THEME` environment variable
+2. `theme` in your personal global config (`~/.dotnet-gitmoji/config.json`)
+3. Built-in `default`
+
+A `theme` key in a repo's `.gitmojirc.json` is ignored (with a note on stderr). The `config` wizard always saves
+your theme choice to the global config, which stores no other setting; everything else belongs in the repo's
+`.gitmojirc.json`.
+
+| Theme                                                           | Best on                                    |
+|-----------------------------------------------------------------|--------------------------------------------|
+| `default`                                                       | Any (follows your terminal's ANSI palette) |
+| `monokai`                                                       | Dark backgrounds                           |
+| `catppuccin-latte`                                              | Light backgrounds                          |
+| `catppuccin-frappe`, `catppuccin-macchiato`, `catppuccin-mocha` | Dark backgrounds                           |
+
+Themes set foreground colors only, so your terminal's background and transparency are always preserved. `default` uses
+named ANSI colors, so it adapts to whatever color scheme your terminal is configured with; the named themes use exact
+RGB values, which Spectre.Console automatically downgrades on terminals without truecolor support. The `NO_COLOR`
+environment variable is honored (all colors are stripped). An unknown theme name falls back to `default` with a
+warning on stderr.
 
 ### Config resolution order
 
 | Location                        | Purpose                                        |
 |---------------------------------|------------------------------------------------|
 | `.gitmojirc.json` in repo root  | Shared team settings; commit this to your repo |
-| `~/.dotnet-gitmoji/config.json` | Personal global fallback                       |
-| Built-in defaults               | Applied when no config file exists             |
+| `~/.dotnet-gitmoji/config.json` | Personal theme preference (its only setting)   |
+| Built-in defaults               | Applied when the repo has no config file       |
+
+`dotnet-gitmoji` is a collaborative tool: the commit convention must be the same for every contributor, so all
+shared settings come from the repo's `.gitmojirc.json` (or the built-in defaults when it is absent). The global
+config holds only `theme`; any other keys found there are ignored with a note on stderr. Conversely, `theme`
+never comes from the repo config; it is always resolved from personal sources (see [Themes](#themes)).
 
 ---
 
 ## Command reference
 
-| Command                                  | Description                                                                                          |
-|------------------------------------------|------------------------------------------------------------------------------------------------------|
-| `dotnet-gitmoji init --mode shell`       | Install the `prepare-commit-msg` hook via Husky.Net (shell mode)                                     |
-| `dotnet-gitmoji init --mode task-runner` | Install the hook via Husky.Net's task runner                                                         |
-| `dotnet-gitmoji remove`                  | Uninstall the hook (prints manual cleanup steps for Husky.Net-managed hooks)                         |
-| `dotnet-gitmoji commit`                  | Interactive commit (client mode)                                                                     |
-| `dotnet-gitmoji config`                  | Run the configuration wizard (saves to repo config by default; use `--global` for personal settings) |
-| `dotnet-gitmoji list`                    | List all available gitmojis                                                                          |
-| `dotnet-gitmoji search <keyword>`        | Fuzzy-search gitmojis by name, code, or description                                                  |
-| `dotnet-gitmoji update`                  | Refresh the cached gitmoji list from the remote API                                                  |
+| Command                                  | Description                                                                                       |
+|------------------------------------------|---------------------------------------------------------------------------------------------------|
+| `dotnet-gitmoji init --mode shell`       | Install the `prepare-commit-msg` hook via Husky.Net (shell mode)                                  |
+| `dotnet-gitmoji init --mode task-runner` | Install the hook via Husky.Net's task runner                                                      |
+| `dotnet-gitmoji remove`                  | Uninstall the hook (prints manual cleanup steps for Husky.Net-managed hooks)                      |
+| `dotnet-gitmoji commit`                  | Interactive commit (client mode)                                                                  |
+| `dotnet-gitmoji config`                  | Run the configuration wizard (saves to the repo config; theme goes to the personal global config) |
+| `dotnet-gitmoji list`                    | List all available gitmojis                                                                       |
+| `dotnet-gitmoji search <keyword>`        | Fuzzy-search gitmojis by name, code, or description                                               |
+| `dotnet-gitmoji update`                  | Refresh the cached gitmoji list from the remote API                                               |
 
 When installed locally, prefix every command with `dotnet tool run`:
 
