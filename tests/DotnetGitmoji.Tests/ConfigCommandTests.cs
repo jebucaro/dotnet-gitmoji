@@ -14,21 +14,26 @@ public class ConfigCommandTests
     private const string HttpsUrlErrorFragment = "HTTPS URL";
 
     private readonly IConfigurationService _configService = Substitute.For<IConfigurationService>();
+    private readonly IGitService _gitService = Substitute.For<IGitService>();
 
-    private ConfigCommand CreateCommand(bool global = false, bool local = false)
+    private ConfigCommand CreateCommand()
     {
-        return new ConfigCommand(_configService) { Global = global, Local = local };
+        return new ConfigCommand(_configService, _gitService);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenBothGlobalAndLocalSpecified_ThrowsCommandException()
+    public async Task ExecuteAsync_WhenNotInGitRepository_ThrowsCommandException()
     {
-        ConfigCommand command = CreateCommand(true, true);
+        _gitService.GetRepositoryRootAsync()
+            .Returns(Task.FromException<string>(
+                new InvalidOperationException("Not a git repository. Run 'git init' to initialize one.")));
+
+        ConfigCommand command = CreateCommand();
         FakeInMemoryConsole console = new();
 
         CommandException ex = await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
-        Assert.Contains("Cannot specify both", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Not a git repository", ex.Message, StringComparison.OrdinalIgnoreCase);
         await _configService.DidNotReceive().LoadAsync();
     }
 
@@ -134,29 +139,5 @@ public class ConfigCommandTests
         string[]? result = ConfigCommand.ParseScopes(input);
 
         Assert.Equal(expected, result);
-    }
-
-    [Fact]
-    public void DetermineTarget_WhenGlobalTrue_ReturnsGlobal()
-    {
-        ConfigCommand command = CreateCommand(true);
-
-        Assert.Equal(Models.ConfigSaveTarget.Global, command.DetermineTarget());
-    }
-
-    [Fact]
-    public void DetermineTarget_WhenLocalTrue_ReturnsLocal()
-    {
-        ConfigCommand command = CreateCommand(local: true);
-
-        Assert.Equal(Models.ConfigSaveTarget.Local, command.DetermineTarget());
-    }
-
-    [Fact]
-    public void DetermineTarget_WhenNeither_ReturnsAuto()
-    {
-        ConfigCommand command = CreateCommand();
-
-        Assert.Equal(Models.ConfigSaveTarget.Auto, command.DetermineTarget());
     }
 }

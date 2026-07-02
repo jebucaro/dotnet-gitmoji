@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
 using DotnetGitmoji.Theming;
@@ -343,12 +344,21 @@ public class ConfigurationServiceTests
         byte[]? globalBackup = await BackupAndDeleteGlobalConfigAsync();
         try
         {
+            // A legacy global config with shared settings gets replaced by theme-only content.
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await File.WriteAllTextAsync(DotnetGitmojiPaths.GlobalConfigPath,
+                """{ "capitalizeTitle": false, "theme": "default" }""",
+                TestContext.Current.CancellationToken);
+
             ConfigurationService service = new(gitService);
             await service.SaveThemePreferenceAsync("monokai");
 
             string globalContent = await File.ReadAllTextAsync(DotnetGitmojiPaths.GlobalConfigPath,
                 TestContext.Current.CancellationToken);
-            Assert.Contains("\"theme\": \"monokai\"", globalContent);
+            using JsonDocument document = JsonDocument.Parse(globalContent);
+            JsonProperty themeProperty = Assert.Single(document.RootElement.EnumerateObject());
+            Assert.Equal("theme", themeProperty.Name);
+            Assert.Equal("monokai", themeProperty.Value.GetString());
             Assert.Equal(repoContent,
                 await File.ReadAllTextAsync(repoConfigPath, TestContext.Current.CancellationToken));
         }
@@ -394,7 +404,7 @@ public class ConfigurationServiceTests
     }
 
     [Fact]
-    public async Task SaveAsync_WhenAutoTargetInGitRepo_SavesRepoFile()
+    public async Task SaveAsync_WhenInGitRepo_SavesRepoFile()
     {
         IGitService? gitService = Substitute.For<IGitService>();
         string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
@@ -406,7 +416,7 @@ public class ConfigurationServiceTests
             ConfigurationService service = new(gitService);
             ToolConfiguration config = new() { CapitalizeTitle = false };
 
-            await service.SaveAsync(config, ConfigSaveTarget.Auto);
+            await service.SaveAsync(config);
 
             string savedPath = Path.Combine(tempDir, ".gitmojirc.json");
             Assert.True(File.Exists(savedPath));
@@ -418,97 +428,89 @@ public class ConfigurationServiceTests
     }
 
     [Fact]
-    public async Task SaveAsync_WhenAutoTargetAndGitServiceThrows_SavesGlobalConfig()
+    public async Task SaveAsync_WhenNotInGitRepo_Throws()
     {
         IGitService? gitService = Substitute.For<IGitService>();
         gitService.GetRepositoryRootAsync()
             .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
 
-        string globalPath = DotnetGitmojiPaths.GlobalConfigPath;
-        bool hadGlobal = File.Exists(globalPath);
-        byte[]? backup = hadGlobal
-            ? await File.ReadAllBytesAsync(globalPath, TestContext.Current.CancellationToken)
-            : null;
+        ConfigurationService service = new(gitService);
 
-        try
-        {
-            ConfigurationService service = new(gitService);
-            ToolConfiguration config = new() { CapitalizeTitle = false };
-
-            await service.SaveAsync(config, ConfigSaveTarget.Auto);
-
-            Assert.True(File.Exists(globalPath));
-        }
-        finally
-        {
-            if (backup is not null)
-            {
-                await File.WriteAllBytesAsync(globalPath, backup, TestContext.Current.CancellationToken);
-            }
-            else if (!hadGlobal && File.Exists(globalPath))
-            {
-                File.Delete(globalPath);
-            }
-        }
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveAsync(new ToolConfiguration()));
     }
 
     [Fact]
-    public async Task SaveAsync_WhenLocalTarget_SavesRepoFile()
-    {
-        IGitService? gitService = Substitute.For<IGitService>();
-        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-        gitService.GetRepositoryRootAsync().Returns(tempDir);
-
-        try
-        {
-            ConfigurationService service = new(gitService);
-            ToolConfiguration config = new() { CapitalizeTitle = false };
-
-            await service.SaveAsync(config, ConfigSaveTarget.Local);
-
-            Assert.True(File.Exists(Path.Combine(tempDir, ".gitmojirc.json")));
-        }
-        finally
-        {
-            Directory.Delete(tempDir, true);
-        }
-    }
-
-    [Fact]
-    public async Task LoadAsync_WhenGlobalConfigExistsAndNoRepoConfig_LoadsGlobalConfig()
+    public async Task LoadAsync_WhenGlobalConfigHasNonThemeSettings_IgnoresThemWithNote()
     {
         IGitService? gitService = Substitute.For<IGitService>();
         gitService.GetRepositoryRootAsync()
             .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
 
-        string globalPath = DotnetGitmojiPaths.GlobalConfigPath;
-        bool hadGlobal = File.Exists(globalPath);
-        byte[]? backup = hadGlobal
-            ? await File.ReadAllBytesAsync(globalPath, TestContext.Current.CancellationToken)
-            : null;
-
+        byte[]? globalBackup = await BackupAndDeleteGlobalConfigAsync();
+        string? envBackup = SwapThemeEnvironmentVariable(null);
         try
         {
             Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
-            string globalConfig = """{ "CapitalizeTitle": false }""";
-            await File.WriteAllTextAsync(globalPath, globalConfig, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(DotnetGitmojiPaths.GlobalConfigPath,
+                """{ "CapitalizeTitle": false, "theme": "monokai" }""",
+                TestContext.Current.CancellationToken);
 
             ConfigurationService service = new(gitService);
-            ToolConfiguration config = await service.LoadAsync();
+            (ToolConfiguration config, string stderr) = await LoadCapturingStdErrAsync(service);
 
-            Assert.False(config.CapitalizeTitle);
+            Assert.True(config.CapitalizeTitle); // shared setting in the global config is ignored
+            Assert.Equal("monokai", config.Theme); // the theme is still honored
+            Assert.Contains("only 'theme' is read", stderr);
         }
         finally
         {
-            if (backup is not null)
-            {
-                await File.WriteAllBytesAsync(globalPath, backup, TestContext.Current.CancellationToken);
-            }
-            else if (File.Exists(globalPath))
-            {
-                File.Delete(globalPath);
-            }
+            SwapThemeEnvironmentVariable(envBackup);
+            await RestoreGlobalConfigAsync(globalBackup);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenGlobalConfigHasOnlyTheme_EmitsNoNote()
+    {
+        IGitService? gitService = Substitute.For<IGitService>();
+        gitService.GetRepositoryRootAsync()
+            .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
+
+        byte[]? globalBackup = await BackupAndDeleteGlobalConfigAsync();
+        string? envBackup = SwapThemeEnvironmentVariable(null);
+        try
+        {
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await File.WriteAllTextAsync(DotnetGitmojiPaths.GlobalConfigPath,
+                """{ "theme": "monokai" }""", TestContext.Current.CancellationToken);
+
+            ConfigurationService service = new(gitService);
+            (ToolConfiguration config, string stderr) = await LoadCapturingStdErrAsync(service);
+
+            Assert.Equal("monokai", config.Theme);
+            Assert.Empty(stderr);
+        }
+        finally
+        {
+            SwapThemeEnvironmentVariable(envBackup);
+            await RestoreGlobalConfigAsync(globalBackup);
+        }
+    }
+
+    private static async Task<(ToolConfiguration Config, string StdErr)> LoadCapturingStdErrAsync(
+        ConfigurationService service)
+    {
+        TextWriter originalError = Console.Error;
+        await using StringWriter stderr = new();
+        Console.SetError(stderr);
+        try
+        {
+            ToolConfiguration config = await service.LoadAsync();
+            return (config, stderr.ToString());
+        }
+        finally
+        {
+            Console.SetError(originalError);
         }
     }
 }

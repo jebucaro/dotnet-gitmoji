@@ -20,8 +20,8 @@ public sealed class ToolConfiguration
     public bool ShowSemverBadge { get; set; } = true;
     public bool NormalizeCommitFormat { get; set; } = false;
 
-    // Personal display preference, resolved from DOTNET_GITMOJI_THEME or the global config —
-    // never from the shared repo config. Null means "no preference recorded".
+    // Personal display preference, resolved from DOTNET_GITMOJI_THEME or the global config (whose
+    // only content it is) — never from the shared repo config. Null means "no preference recorded".
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Theme { get; set; }
 }
