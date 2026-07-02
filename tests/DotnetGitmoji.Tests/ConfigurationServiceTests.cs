@@ -1,5 +1,6 @@
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
 using NSubstitute;
 
 namespace DotnetGitmoji.Tests;
@@ -23,6 +24,7 @@ public class ConfigurationServiceTests
         Assert.True(config.ShowSemverBadge);
         Assert.False(config.NormalizeCommitFormat);
         Assert.Null(config.Scopes);
+        Assert.Equal(Themes.DefaultName, config.Theme);
     }
 
     [Fact]
@@ -201,6 +203,58 @@ public class ConfigurationServiceTests
             ToolConfiguration config = await service.LoadAsync();
 
             Assert.Equal(ToolConfiguration.DefaultMaxTitleLength, config.MaxTitleLength);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenConfigHasUnknownTheme_FallsBackToDefault()
+    {
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        string configJson = """{ "theme": "solarized" }""";
+        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
+            TestContext.Current.CancellationToken);
+
+        try
+        {
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
+
+            Assert.Equal(Themes.DefaultName, config.Theme);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Theory]
+    [InlineData("catppuccin-mocha")]
+    [InlineData("Monokai")]
+    public async Task LoadAsync_WhenConfigHasValidTheme_LoadsIt(string theme)
+    {
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        string configJson = $$"""{ "theme": "{{theme}}" }""";
+        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
+            TestContext.Current.CancellationToken);
+
+        try
+        {
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
+
+            Assert.Equal(theme, config.Theme);
         }
         finally
         {

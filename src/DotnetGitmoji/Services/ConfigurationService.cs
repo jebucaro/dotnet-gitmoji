@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using DotnetGitmoji.Models;
+using DotnetGitmoji.Theming;
 
 namespace DotnetGitmoji.Services;
 
@@ -125,6 +126,13 @@ public sealed class ConfigurationService : IConfigurationService
                 await Console.Error.WriteLineAsync(
                     $"Warning: Invalid MaxTitleLength in config at {path}, using default.");
                 config.MaxTitleLength = defaults.MaxTitleLength;
+            }
+
+            if (!Themes.IsKnown(config.Theme))
+            {
+                await Console.Error.WriteLineAsync(
+                    $"Warning: Invalid Theme in config at {path}, using default.");
+                config.Theme = defaults.Theme;
             }
 
             if (Uri.TryCreate(config.GitmojisUrl, UriKind.Absolute, out Uri? uri)
