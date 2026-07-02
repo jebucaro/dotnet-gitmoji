@@ -9,10 +9,12 @@ namespace DotnetGitmoji.Tests;
 public class ListCommandTests
 {
     private readonly IGitmojiProvider _gitmojiProvider = Substitute.For<IGitmojiProvider>();
+    private readonly IConfigurationService _configService = Substitute.For<IConfigurationService>();
 
     private ListCommand CreateCommand()
     {
-        return new ListCommand(_gitmojiProvider);
+        _configService.LoadAsync().Returns(new ToolConfiguration());
+        return new ListCommand(_gitmojiProvider, _configService);
     }
 
     [Fact]

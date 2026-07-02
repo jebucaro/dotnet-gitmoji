@@ -145,7 +145,7 @@ public class CommitCommandValidationTests
     {
         // Title prompt must be independent of MessagePrompt — title is always required.
         _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = false });
-        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
 
@@ -160,7 +160,7 @@ public class CommitCommandValidationTests
     [Fact]
     public async Task ExecuteAsync_WhenTitleArgIsProvided_DoesNotPromptForTitle()
     {
-        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
         _gitService.HasStagedChangesAsync().Returns(false);
@@ -201,7 +201,7 @@ public class CommitCommandValidationTests
     public async Task ExecuteAsync_WhenEmojiFormatIsCode_UsesCodePrefixInCommit()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { EmojiFormat = EmojiFormat.Code });
-        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
 
         CommitCommand command = CreateCommand("fix something");
@@ -219,7 +219,7 @@ public class CommitCommandValidationTests
     public async Task ExecuteAsync_WhenCapitalizeTitleIsTrue_CapitalizesTitleInCommit()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { CapitalizeTitle = true });
-        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
 
         CommitCommand command = CreateCommand("fix something");
@@ -237,9 +237,9 @@ public class CommitCommandValidationTests
     public async Task ExecuteAsync_WhenScopePromptIsTrue_PromptsForScope()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { ScopePrompt = true });
-        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
-        _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
+        _promptService.AskScope(Arg.Any<ToolConfiguration>()).Returns((string?)null);
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
 
         CommitCommand command = CreateCommand();
@@ -247,23 +247,23 @@ public class CommitCommandValidationTests
 
         await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
-        _promptService.Received(1).AskScope(Arg.Any<string[]?>());
+        _promptService.Received(1).AskScope(Arg.Any<ToolConfiguration>());
     }
 
     [Fact]
     public async Task ExecuteAsync_WhenMessagePromptIsTrue_PromptsForBody()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { MessagePrompt = true });
-        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
-        _promptService.AskMessage().Returns("some body");
+        _promptService.AskMessage(Arg.Any<ToolConfiguration>()).Returns("some body");
 
         CommitCommand command = CreateCommand("fix something");
         FakeInMemoryConsole console = new();
 
         await command.ExecuteAsync(console);
 
-        _promptService.Received(1).AskMessage();
+        _promptService.Received(1).AskMessage(Arg.Any<ToolConfiguration>());
         await _gitService.Received(1).CommitAsync(Arg.Any<string>(), "some body", false);
     }
 
@@ -271,7 +271,7 @@ public class CommitCommandValidationTests
     public async Task ExecuteAsync_WhenSignedCommitIsTrue_PassesSignedFlagToCommit()
     {
         _configService.LoadAsync().Returns(new ToolConfiguration { SignedCommit = true });
-        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
 
         CommitCommand command = CreateCommand("fix something");
@@ -287,9 +287,9 @@ public class CommitCommandValidationTests
     {
         string[] predefinedScopes = new[] { "api", "core" };
         _configService.LoadAsync().Returns(new ToolConfiguration { ScopePrompt = true, Scopes = predefinedScopes });
-        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(
+        _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>()).Returns(
             new Gitmoji("🎨", "entity", ":art:", "desc", "art", null));
-        _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
+        _promptService.AskScope(Arg.Any<ToolConfiguration>()).Returns((string?)null);
         _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
 
         CommitCommand command = CreateCommand();
@@ -298,7 +298,8 @@ public class CommitCommandValidationTests
         await Assert.ThrowsAsync<CommandException>(() => command.ExecuteAsync(console).AsTask());
 
         _promptService.Received(1).AskScope(
-            Arg.Is<string[]?>(s => s != null && s.Contains("api") && s.Contains("core")));
+            Arg.Is<ToolConfiguration>(c =>
+                c.Scopes != null && c.Scopes.Contains("api") && c.Scopes.Contains("core")));
     }
 
     [Theory]

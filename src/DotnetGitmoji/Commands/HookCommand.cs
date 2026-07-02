@@ -126,9 +126,9 @@ public sealed partial class HookCommand : ICommand
         }
 
         string? scope = result.ParsedScope
-                        ?? (missingScope ? _promptService.AskScope(config.Scopes) : null);
+                        ?? (missingScope ? _promptService.AskScope(config) : null);
         string? body = result.ParsedBody
-                       ?? (missingBody ? _promptService.AskMessage() : null);
+                       ?? (missingBody ? _promptService.AskMessage(config) : null);
 
         string prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? result.MatchedGitmoji!.Emoji
@@ -171,14 +171,14 @@ public sealed partial class HookCommand : ICommand
             return;
         }
 
-        Gitmoji selectedGitmoji = _promptService.SelectGitmoji(gitmojis, config.ShowSemverBadge);
+        Gitmoji selectedGitmoji = _promptService.SelectGitmoji(gitmojis, config);
 
         string prefix = config.EmojiFormat == EmojiFormat.Emoji
             ? selectedGitmoji.Emoji
             : selectedGitmoji.Code;
 
         string? scope = config.ScopePrompt
-            ? _promptService.AskScope(config.Scopes)
+            ? _promptService.AskScope(config)
             : null;
 
         string? rawTitle = _promptService.AskTitle(config, message);
@@ -203,7 +203,7 @@ public sealed partial class HookCommand : ICommand
             : rawTitle;
         string newSubject = CommitCommand.BuildSubject(prefix, scope, title, config.NormalizeCommitFormat);
 
-        string? body = config.MessagePrompt ? _promptService.AskMessage() : null;
+        string? body = config.MessagePrompt ? _promptService.AskMessage(config) : null;
 
         try
         {

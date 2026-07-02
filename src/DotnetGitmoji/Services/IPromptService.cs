@@ -9,8 +9,8 @@ public interface IPromptService
     /// </summary>
     bool IsInteractive { get; }
 
-    Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis, bool showSemverBadge = true);
-    string? AskScope(IReadOnlyList<string>? predefinedScopes = null);
+    Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis, ToolConfiguration config);
+    string? AskScope(ToolConfiguration config);
     string? AskTitle(ToolConfiguration config, string? defaultValue = null);
-    string? AskMessage();
+    string? AskMessage(ToolConfiguration config);
 }

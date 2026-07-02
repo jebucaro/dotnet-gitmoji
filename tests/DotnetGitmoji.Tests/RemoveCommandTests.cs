@@ -13,10 +13,12 @@ public class RemoveCommandTests
     private const string NoHookFoundFragment = "No dotnet-gitmoji hook found";
 
     private readonly IGitService _gitService = Substitute.For<IGitService>();
+    private readonly IConfigurationService _configService = Substitute.For<IConfigurationService>();
 
     private RemoveCommand CreateCommand()
     {
-        return new RemoveCommand(_gitService);
+        _configService.LoadAsync().Returns(new ToolConfiguration());
+        return new RemoveCommand(_gitService, _configService);
     }
 
     [Fact]

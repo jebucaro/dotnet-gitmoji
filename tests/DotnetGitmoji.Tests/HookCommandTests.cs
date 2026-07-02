@@ -71,16 +71,17 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
-            _promptService.AskMessage().Returns((string?)null);
+            _promptService.AskMessage(Arg.Any<ToolConfiguration>()).Returns((string?)null);
 
             HookCommand command = CreateCommand(tempFile);
             FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
-            _promptService.Received().AskMessage();
+            _promptService.Received().AskMessage(Arg.Any<ToolConfiguration>());
         }
         finally
         {
@@ -101,7 +102,8 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
 
             HookCommand command = CreateCommand(tempFile);
@@ -109,7 +111,7 @@ public class HookCommandTests
 
             await command.ExecuteAsync(console);
 
-            _promptService.DidNotReceive().AskMessage();
+            _promptService.DidNotReceive().AskMessage(Arg.Any<ToolConfiguration>());
         }
         finally
         {
@@ -133,7 +135,8 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>())
                 .Returns(new string('a', 11));
 
@@ -189,7 +192,8 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
             _commitMessageService.WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>())
                 .Returns(Task.FromException(new IOException("disk write error")));
@@ -221,16 +225,17 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
-            _promptService.AskScope(Arg.Any<string[]?>()).Returns((string?)null);
+            _promptService.AskScope(Arg.Any<ToolConfiguration>()).Returns((string?)null);
 
             HookCommand command = CreateCommand(tempFile);
             FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
-            _promptService.Received(1).AskScope(Arg.Any<string[]?>());
+            _promptService.Received(1).AskScope(Arg.Any<ToolConfiguration>());
         }
         finally
         {
@@ -310,7 +315,8 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix bug");
 
             HookCommand command = CreateCommand(tempFile);
@@ -492,14 +498,14 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(true, BugGitmoji, null, "fix issue", null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.AskScope(Arg.Any<string[]?>()).Returns("api");
+            _promptService.AskScope(Arg.Any<ToolConfiguration>()).Returns("api");
 
             HookCommand command = CreateCommand(tempFile);
             FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
-            _promptService.Received(1).AskScope(Arg.Any<string[]?>());
+            _promptService.Received(1).AskScope(Arg.Any<ToolConfiguration>());
             await _commitMessageService.Received(1).WriteMessageAsync(
                 Arg.Any<string>(),
                 Arg.Is<string>(s => s.Contains("(api)")),
@@ -525,14 +531,14 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(true, BugGitmoji, null, "fix issue", null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.AskMessage().Returns("some body text");
+            _promptService.AskMessage(Arg.Any<ToolConfiguration>()).Returns("some body text");
 
             HookCommand command = CreateCommand(tempFile);
             FakeInMemoryConsole console = new();
 
             await command.ExecuteAsync(console);
 
-            _promptService.Received(1).AskMessage();
+            _promptService.Received(1).AskMessage(Arg.Any<ToolConfiguration>());
             await _commitMessageService.Received(1).WriteMessageAsync(
                 Arg.Any<string>(),
                 Arg.Any<string>(),
@@ -561,7 +567,7 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(true, BugGitmoji, null, "fix issue", null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.AskScope(Arg.Any<string[]?>()).Returns("core");
+            _promptService.AskScope(Arg.Any<ToolConfiguration>()).Returns("core");
 
             HookCommand command = CreateCommand(tempFile);
             FakeInMemoryConsole console = new();
@@ -593,8 +599,9 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
-            _promptService.AskScope(Arg.Any<string[]?>()).Returns("ui");
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
+            _promptService.AskScope(Arg.Any<ToolConfiguration>()).Returns("ui");
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix layout");
 
             HookCommand command = CreateCommand(tempFile);
@@ -602,7 +609,7 @@ public class HookCommandTests
 
             await command.ExecuteAsync(console);
 
-            _promptService.Received(1).AskScope(Arg.Any<string[]?>());
+            _promptService.Received(1).AskScope(Arg.Any<ToolConfiguration>());
             await _commitMessageService.Received(1).WriteMessageAsync(
                 Arg.Any<string>(),
                 Arg.Is<string>(s => s.Contains("(ui)")),
@@ -632,7 +639,7 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(true, BugGitmoji, null, "fix issue", null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.AskScope(Arg.Any<string[]?>()).Returns("api");
+            _promptService.AskScope(Arg.Any<ToolConfiguration>()).Returns("api");
 
             HookCommand command = CreateCommand(tempFile);
             FakeInMemoryConsole console = new();
@@ -640,7 +647,8 @@ public class HookCommandTests
             await command.ExecuteAsync(console);
 
             _promptService.Received(1).AskScope(
-                Arg.Is<string[]?>(s => s != null && s.Contains("api") && s.Contains("core")));
+                Arg.Is<ToolConfiguration>(c =>
+                    c.Scopes != null && c.Scopes.Contains("api") && c.Scopes.Contains("core")));
         }
         finally
         {
@@ -666,8 +674,9 @@ public class HookCommandTests
             _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
                 .Returns(new ValidationResult(false, null, null, null, null));
             _promptService.IsInteractive.Returns(true);
-            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>()).Returns(ArtGitmoji);
-            _promptService.AskScope(Arg.Any<string[]?>()).Returns("api");
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
+            _promptService.AskScope(Arg.Any<ToolConfiguration>()).Returns("api");
             _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns("Fix layout");
 
             HookCommand command = CreateCommand(tempFile);
@@ -676,7 +685,8 @@ public class HookCommandTests
             await command.ExecuteAsync(console);
 
             _promptService.Received(1).AskScope(
-                Arg.Is<string[]?>(s => s != null && s.Contains("api") && s.Contains("core")));
+                Arg.Is<ToolConfiguration>(c =>
+                    c.Scopes != null && c.Scopes.Contains("api") && c.Scopes.Contains("core")));
         }
         finally
         {

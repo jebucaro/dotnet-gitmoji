@@ -21,6 +21,7 @@ public class InitCommandTests
     {
         _gitService.IsHookInstalledAsync().Returns(false);
         _gitService.DetectHuskyKindAsync().Returns(HuskyInstallKind.None);
+        _configService.LoadAsync().Returns(new ToolConfiguration());
     }
 
     private InitCommand CreateCommand(string? mode = null, bool createConfig = false)
