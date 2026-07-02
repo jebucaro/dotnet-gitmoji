@@ -4,13 +4,15 @@ namespace DotnetGitmoji.Theming;
 
 /// <summary>
 /// Registry of built-in themes. The default theme uses ANSI palette colors (indices 0-15 plus
-/// gold1) so it follows the user's terminal color scheme; named themes use RGB values that
-/// Spectre.Console downgrades to the detected color system on legacy terminals.
+/// the fixed golds) so it follows the user's terminal color scheme; named themes use RGB values
+/// that Spectre.Console downgrades to the detected color system on legacy terminals.
 /// </summary>
 public static class Themes
 {
     public const string DefaultName = "default";
 
+    // Brand identity: purple structures the frame (borders, headers, badges), gold spotlights the
+    // single selected item, semantic colors (green/yellow/red) keep their conventional meaning.
     public static ThemePalette Default { get; } = new()
     {
         Name = DefaultName,
@@ -22,9 +24,9 @@ public static class Themes
         Error = Color.Red,
         Muted = Color.Grey,
         Emphasis = Color.White,
-        Accent = Color.Blue,
-        Border = Color.Green,
-        SelectionMarker = Color.Green
+        Accent = Color.Purple,
+        Border = Color.Purple,
+        SelectionMarker = Color.Gold3_1
     };
 
     public static ThemePalette Monokai { get; } = CreateMonokai();
@@ -61,22 +63,22 @@ public static class Themes
     private static ThemePalette CreateMonokai()
     {
         Color foreground = new(0xF8, 0xF8, 0xF2);
-        Color green = new(0xA6, 0xE2, 0x2E);
         Color pink = new(0xF9, 0x26, 0x72);
+        Color orange = new(0xFD, 0x97, 0x1F);
 
         return new ThemePalette
         {
             Name = "monokai",
             BrandPrimary = new Color(0xAE, 0x81, 0xFF),
             BrandSecondary = foreground,
-            BrandTertiary = new Color(0xFD, 0x97, 0x1F),
-            Success = green,
+            BrandTertiary = orange,
+            Success = new Color(0xA6, 0xE2, 0x2E),
             Warning = new Color(0xE6, 0xDB, 0x74),
             Error = pink,
-            Muted = new Color(0x75, 0x71, 0x5E),
+            Muted = new Color(0x75, 0x71, 0x5E), // comment gray
             Emphasis = foreground,
             Accent = new Color(0x66, 0xD9, 0xEF),
-            Border = green,
+            Border = orange,
             SelectionMarker = pink
         };
     }
@@ -85,7 +87,6 @@ public static class Themes
     {
         Color mauve = new(0x88, 0x39, 0xEF);
         Color text = new(0x4C, 0x4F, 0x69);
-        Color green = new(0x40, 0xA0, 0x2B);
 
         return new ThemePalette
         {
@@ -93,13 +94,13 @@ public static class Themes
             BrandPrimary = mauve,
             BrandSecondary = text,
             BrandTertiary = new Color(0xFE, 0x64, 0x0B),
-            Success = green,
+            Success = new Color(0x40, 0xA0, 0x2B),
             Warning = new Color(0xDF, 0x8E, 0x1D),
             Error = new Color(0xD2, 0x0F, 0x39),
-            Muted = new Color(0x8C, 0x8F, 0xA1),
+            Muted = new Color(0x6C, 0x6F, 0x85), // subtext0
             Emphasis = text,
             Accent = new Color(0x1E, 0x66, 0xF5),
-            Border = green,
+            Border = new Color(0x72, 0x87, 0xFD), // lavender
             SelectionMarker = mauve
         };
     }
@@ -108,7 +109,6 @@ public static class Themes
     {
         Color mauve = new(0xCA, 0x9E, 0xE6);
         Color text = new(0xC6, 0xD0, 0xF5);
-        Color green = new(0xA6, 0xD1, 0x89);
 
         return new ThemePalette
         {
@@ -116,13 +116,13 @@ public static class Themes
             BrandPrimary = mauve,
             BrandSecondary = text,
             BrandTertiary = new Color(0xEF, 0x9F, 0x76),
-            Success = green,
+            Success = new Color(0xA6, 0xD1, 0x89),
             Warning = new Color(0xE5, 0xC8, 0x90),
             Error = new Color(0xE7, 0x82, 0x84),
-            Muted = new Color(0x83, 0x8B, 0xA7),
+            Muted = new Color(0xA5, 0xAD, 0xCE), // subtext0
             Emphasis = text,
             Accent = new Color(0x8C, 0xAA, 0xEE),
-            Border = green,
+            Border = new Color(0xBA, 0xBB, 0xF1), // lavender
             SelectionMarker = mauve
         };
     }
@@ -131,7 +131,6 @@ public static class Themes
     {
         Color mauve = new(0xC6, 0xA0, 0xF6);
         Color text = new(0xCA, 0xD3, 0xF5);
-        Color green = new(0xA6, 0xDA, 0x95);
 
         return new ThemePalette
         {
@@ -139,13 +138,13 @@ public static class Themes
             BrandPrimary = mauve,
             BrandSecondary = text,
             BrandTertiary = new Color(0xF5, 0xA9, 0x7F),
-            Success = green,
+            Success = new Color(0xA6, 0xDA, 0x95),
             Warning = new Color(0xEE, 0xD4, 0x9F),
             Error = new Color(0xED, 0x87, 0x96),
-            Muted = new Color(0x80, 0x87, 0xA2),
+            Muted = new Color(0xA5, 0xAD, 0xCB), // subtext0
             Emphasis = text,
             Accent = new Color(0x8A, 0xAD, 0xF4),
-            Border = green,
+            Border = new Color(0xB7, 0xBD, 0xF8), // lavender
             SelectionMarker = mauve
         };
     }
@@ -154,7 +153,6 @@ public static class Themes
     {
         Color mauve = new(0xCB, 0xA6, 0xF7);
         Color text = new(0xCD, 0xD6, 0xF4);
-        Color green = new(0xA6, 0xE3, 0xA1);
 
         return new ThemePalette
         {
@@ -162,13 +160,13 @@ public static class Themes
             BrandPrimary = mauve,
             BrandSecondary = text,
             BrandTertiary = new Color(0xFA, 0xB3, 0x87),
-            Success = green,
+            Success = new Color(0xA6, 0xE3, 0xA1),
             Warning = new Color(0xF9, 0xE2, 0xAF),
             Error = new Color(0xF3, 0x8B, 0xA8),
-            Muted = new Color(0x7F, 0x84, 0x9C),
+            Muted = new Color(0xA6, 0xAD, 0xC8), // subtext0
             Emphasis = text,
             Accent = new Color(0x89, 0xB4, 0xFA),
-            Border = green,
+            Border = new Color(0xB4, 0xBE, 0xFE), // lavender
             SelectionMarker = mauve
         };
     }

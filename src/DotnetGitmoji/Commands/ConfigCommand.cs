@@ -225,8 +225,8 @@ public sealed partial class ConfigCommand : ICommand
     {
         AnsiConsole.WriteLine();
         AnsiConsole.Write(
-            new Panel(new Markup($"[dim]{Markup.Escape(description)}[/]"))
-                .Header($"[bold {theme.SuccessMarkup}]{Markup.Escape(title)}[/]")
+            new Panel(new Markup(Markup.Escape(description)))
+                .Header($"[bold {theme.BorderMarkup}]{Markup.Escape(title)}[/]")
                 .RoundedBorder()
                 .BorderColor(theme.Border)
                 .Expand());

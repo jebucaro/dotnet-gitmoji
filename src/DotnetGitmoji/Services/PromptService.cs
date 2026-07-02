@@ -65,7 +65,7 @@ public sealed partial class PromptService : IPromptService
                 GitmojiPageSize,
                 theme,
                 gitmoji => new Text($"{gitmoji.Emoji} {gitmoji.Code}"),
-                $"[bold {theme.SuccessMarkup}]Description[/]",
+                $"[bold {theme.BorderMarkup}]Description[/]",
                 gitmoji =>
                     $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge, theme)}",
                 new Markup(BuildBannerMarkup(theme))),

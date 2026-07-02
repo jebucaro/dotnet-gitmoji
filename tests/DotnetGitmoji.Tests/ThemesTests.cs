@@ -56,10 +56,11 @@ public class ThemesTests
     }
 
     [Fact]
-    public void DefaultTheme_ReproducesLegacyMarkupColors()
+    public void DefaultTheme_UsesAnsiPaletteBrandColors()
     {
-        // These exact strings were the hardcoded markup literals before theming existed;
-        // the default theme must keep emitting them so existing users see zero change.
+        // The default theme must keep using named ANSI palette colors so it adapts to the
+        // user's terminal scheme: purple structures the frame, gold spotlights the selection,
+        // and the semantic triad keeps its conventional colors.
         Assert.Equal("purple", Themes.Default.BrandPrimaryMarkup);
         Assert.Equal("white", Themes.Default.BrandSecondaryMarkup);
         Assert.Equal("gold1", Themes.Default.BrandTertiaryMarkup);
@@ -68,8 +69,9 @@ public class ThemesTests
         Assert.Equal("red", Themes.Default.ErrorMarkup);
         Assert.Equal("grey", Themes.Default.MutedMarkup);
         Assert.Equal("white", Themes.Default.EmphasisMarkup);
-        Assert.Equal("blue", Themes.Default.AccentMarkup);
-        Assert.Equal("green", Themes.Default.SelectionMarkerMarkup);
+        Assert.Equal("purple", Themes.Default.AccentMarkup);
+        Assert.Equal("purple", Themes.Default.BorderMarkup);
+        Assert.Equal("gold3_1", Themes.Default.SelectionMarkerMarkup);
     }
 
     [Fact]
@@ -108,6 +110,7 @@ public class ThemesTests
             theme.MutedMarkup,
             theme.EmphasisMarkup,
             theme.AccentMarkup,
+            theme.BorderMarkup,
             theme.SelectionMarkerMarkup
         ];
     }

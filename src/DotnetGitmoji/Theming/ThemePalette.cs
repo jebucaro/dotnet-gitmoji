@@ -30,5 +30,6 @@ public sealed record ThemePalette
     public string MutedMarkup => Muted.ToMarkup();
     public string EmphasisMarkup => Emphasis.ToMarkup();
     public string AccentMarkup => Accent.ToMarkup();
+    public string BorderMarkup => Border.ToMarkup();
     public string SelectionMarkerMarkup => SelectionMarker.ToMarkup();
 }
