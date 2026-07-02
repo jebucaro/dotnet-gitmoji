@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text.RegularExpressions;
 using DotnetGitmoji.Models;
+using DotnetGitmoji.Theming;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -23,9 +24,6 @@ public sealed partial class PromptService : IPromptService
     private const string BeginSyncUpdate = "\u001b[?2026h";
     private const string EndSyncUpdate = "\u001b[?2026l";
     private const string EraseToEndOfScreen = "\u001b[0J";
-    private const string BannerTitle = "[bold][purple]dotnet[/][white]-[/][gold1]gitmoji[/][/]";
-
-    private static readonly IRenderable _banner = new Markup(BannerTitle);
 
     [GeneratedRegex(@"^[a-zA-Z0-9_\-]+$")]
     private static partial Regex ScopePattern();
@@ -47,13 +45,17 @@ public sealed partial class PromptService : IPromptService
         Environment.UserInteractive &&
         !Console.IsInputRedirected;
 
-    public Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis, bool showSemverBadge = true)
+    public Gitmoji SelectGitmoji(IReadOnlyList<Gitmoji> gitmojis, ToolConfiguration config)
     {
         ArgumentNullException.ThrowIfNull(gitmojis);
+        ArgumentNullException.ThrowIfNull(config);
         if (gitmojis.Count == 0)
         {
             throw new InvalidOperationException("Cannot show an empty gitmoji list.");
         }
+
+        ThemePalette theme = Themes.Resolve(config.Theme);
+        bool showSemverBadge = config.ShowSemverBadge;
 
         Gitmoji result = SelectWithFuzzySearch(
             gitmojis,
@@ -61,37 +63,48 @@ public sealed partial class PromptService : IPromptService
                 "Choose a gitmoji:",
                 "Type to fuzzy search gitmojis...",
                 GitmojiPageSize,
+                theme,
                 gitmoji => new Text($"{gitmoji.Emoji} {gitmoji.Code}"),
-                "[bold green]Description[/]",
+                $"[bold {theme.SuccessMarkup}]Description[/]",
                 gitmoji =>
-                    $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge)}",
-                _banner),
+                    $"{Markup.Escape(gitmoji.Description)}{FormatSemverBadge(gitmoji, showSemverBadge, theme)}",
+                new Markup(BuildBannerMarkup(theme))),
             (items, query) => _fuzzyMatcher.RankGitmojis(items, query));
 
         _console.MarkupLine(
-            $"[green]✔[/] [bold]Gitmoji:[/] {Markup.Escape(result.Emoji)} [grey]{Markup.Escape(result.Description)}[/]{FormatSemverBadge(result, showSemverBadge)}");
+            $"[{theme.SuccessMarkup}]✔[/] [bold]Gitmoji:[/] {Markup.Escape(result.Emoji)} [{theme.MutedMarkup}]{Markup.Escape(result.Description)}[/]{FormatSemverBadge(result, showSemverBadge, theme)}");
 
         if (showSemverBadge && result.Semver is "patch" or "minor")
         {
             _console.MarkupLine(
-                "[yellow]⚠ For breaking changes, consider 💥 [bold](boom)[/] — it signals MAJOR semver impact.[/]");
+                $"[{theme.WarningMarkup}]⚠ For breaking changes, consider 💥 [bold](boom)[/] — it signals MAJOR semver impact.[/]");
         }
 
         return result;
     }
 
-    private static string FormatSemverBadge(Gitmoji gitmoji, bool showSemverBadge)
+    private static string FormatSemverBadge(Gitmoji gitmoji, bool showSemverBadge, ThemePalette theme)
     {
         if (!showSemverBadge || gitmoji.Semver is null)
         {
             return string.Empty;
         }
 
-        return $" [blue]({gitmoji.Semver})[/]";
+        return $" [{theme.AccentMarkup}]({gitmoji.Semver})[/]";
     }
 
-    public string? AskScope(IReadOnlyList<string>? predefinedScopes = null)
+    internal static string BuildBannerMarkup(ThemePalette theme)
     {
+        return
+            $"[bold][{theme.BrandPrimaryMarkup}]dotnet[/][{theme.BrandSecondaryMarkup}]-[/][{theme.BrandTertiaryMarkup}]gitmoji[/][/]";
+    }
+
+    public string? AskScope(ToolConfiguration config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
+        ThemePalette theme = Themes.Resolve(config.Theme);
+        IReadOnlyList<string>? predefinedScopes = config.Scopes;
         if (predefinedScopes is { Count: > 0 })
         {
             string[] scopes = predefinedScopes
@@ -112,8 +125,9 @@ public sealed partial class PromptService : IPromptService
                     "Select scope:",
                     "Type to fuzzy search scopes...",
                     12,
+                    theme,
                     item => item == ScopeNoneOption
-                        ? (IRenderable)new Markup("[grey](none)[/]")
+                        ? (IRenderable)new Markup($"[{theme.MutedMarkup}](none)[/]")
                         : new Text(item)),
                 (_, query) => _fuzzyMatcher.RankScopes(scopes, query)
                     .Prepend(ScopeNoneOption).ToList());
@@ -123,20 +137,20 @@ public sealed partial class PromptService : IPromptService
 
         while (true)
         {
-            string input = _console.Prompt(new TextPrompt<string>("[grey]Enter scope:[/]"));
+            string input = _console.Prompt(new TextPrompt<string>($"[{theme.MutedMarkup}]Enter scope:[/]"));
             string scope = input.Trim();
 
             if (!ScopePattern().IsMatch(scope))
             {
                 _console.MarkupLine(
-                    "[yellow]Only alphanumeric, _ and - are allowed. Try again.[/]");
+                    $"[{theme.WarningMarkup}]Only alphanumeric, _ and - are allowed. Try again.[/]");
                 continue;
             }
 
             if (scope.Length > MaxScopeLength)
             {
                 scope = scope[..MaxScopeLength];
-                _console.MarkupLine($"[yellow]Scope truncated to {MaxScopeLength} characters.[/]");
+                _console.MarkupLine($"[{theme.WarningMarkup}]Scope truncated to {MaxScopeLength} characters.[/]");
             }
 
             return scope;
@@ -147,10 +161,11 @@ public sealed partial class PromptService : IPromptService
     {
         ArgumentNullException.ThrowIfNull(config);
 
+        ThemePalette theme = Themes.Resolve(config.Theme);
         string? defaultTitle = defaultValue;
         while (true)
         {
-            TextPrompt<string> prompt = new TextPrompt<string>("[grey]Enter commit title:[/]")
+            TextPrompt<string> prompt = new TextPrompt<string>($"[{theme.MutedMarkup}]Enter commit title:[/]")
                 .AllowEmpty();
             if (!string.IsNullOrEmpty(defaultTitle))
             {
@@ -168,14 +183,14 @@ public sealed partial class PromptService : IPromptService
             if (result.WasTrimmed)
             {
                 _console.MarkupLine(
-                    $"[yellow]Warning: title truncated to {result.Title.Length} characters (nearest word boundary).[/]");
+                    $"[{theme.WarningMarkup}]Warning: title truncated to {result.Title.Length} characters (nearest word boundary).[/]");
                 return result.Title;
             }
 
             if (result.ExceededLimit && result.MaxLength is not null)
             {
                 _console.MarkupLine(
-                    $"[yellow]Warning: title exceeds configured maximum length of {result.MaxLength.Value} characters. Enter a shorter title or enable trimming.[/]");
+                    $"[{theme.WarningMarkup}]Warning: title exceeds configured maximum length of {result.MaxLength.Value} characters. Enter a shorter title or enable trimming.[/]");
                 defaultTitle = null;
                 continue;
             }
@@ -184,9 +199,12 @@ public sealed partial class PromptService : IPromptService
         }
     }
 
-    public string? AskMessage()
+    public string? AskMessage(ToolConfiguration config)
     {
-        string? message = _console.Ask<string?>("[grey]Enter commit message:[/]");
+        ArgumentNullException.ThrowIfNull(config);
+
+        ThemePalette theme = Themes.Resolve(config.Theme);
+        string? message = _console.Ask<string?>($"[{theme.MutedMarkup}]Enter commit message:[/]");
         return string.IsNullOrWhiteSpace(message) ? null : message;
     }
 
@@ -349,6 +367,7 @@ public sealed partial class PromptService : IPromptService
         IReadOnlyList<T> rankedItems,
         int selectedIndex)
     {
+        ThemePalette theme = options.Theme;
         List<IRenderable> rows = new();
 
         if (options.Header is not null)
@@ -358,17 +377,18 @@ public sealed partial class PromptService : IPromptService
         }
 
         rows.Add(new Markup($"[bold]{Markup.Escape(options.Title)}[/]"));
-        rows.Add(new Markup("[grey]Type to fuzzy search. Use ↑/↓ to navigate, Enter to select, Esc to clear.[/]"));
+        rows.Add(new Markup(
+            $"[{theme.MutedMarkup}]Type to fuzzy search. Use ↑/↓ to navigate, Enter to select, Esc to clear.[/]"));
 
         string searchDisplay = string.IsNullOrWhiteSpace(query)
-            ? $"[grey]{Markup.Escape(options.SearchPlaceholder)}[/]"
-            : $"[white]{Markup.Escape(query)}[/]";
-        rows.Add(new Markup($"[grey]Search:[/] {searchDisplay}"));
+            ? $"[{theme.MutedMarkup}]{Markup.Escape(options.SearchPlaceholder)}[/]"
+            : $"[{theme.EmphasisMarkup}]{Markup.Escape(query)}[/]";
+        rows.Add(new Markup($"[{theme.MutedMarkup}]Search:[/] {searchDisplay}"));
         rows.Add(new Markup(BlankLine));
 
         if (rankedItems.Count == 0)
         {
-            rows.Add(new Markup("[yellow]No matches. Keep typing or press Backspace to refine.[/]"));
+            rows.Add(new Markup($"[{theme.WarningMarkup}]No matches. Keep typing or press Backspace to refine.[/]"));
             return WrapFullWidth(new Rows(rows));
         }
 
@@ -382,7 +402,7 @@ public sealed partial class PromptService : IPromptService
         {
             int first = pageStart + 1;
             int last = pageStart + visibleItems.Length;
-            rows.Add(new Markup($"[grey]Showing {first}-{last} of {rankedItems.Count} matches.[/]"));
+            rows.Add(new Markup($"[{theme.MutedMarkup}]Showing {first}-{last} of {rankedItems.Count} matches.[/]"));
         }
 
         AddDetailPanel(options, rankedItems[selectedIndex], rows);
@@ -416,7 +436,7 @@ public sealed partial class PromptService : IPromptService
         {
             int absoluteIndex = pageStart + index;
             Markup marker = absoluteIndex == selectedIndex
-                ? new Markup("[green]❯ [/]")
+                ? new Markup($"[{options.Theme.SelectionMarkerMarkup}]❯ [/]")
                 : new Markup("  ");
             grid.AddRow(marker, options.RenderItem(visibleItems[index]));
         }
@@ -442,7 +462,7 @@ public sealed partial class PromptService : IPromptService
             new Panel(new Markup(detail))
                 .Header(options.DetailTitle ?? string.Empty)
                 .RoundedBorder()
-                .BorderColor(Color.Green)
+                .BorderColor(options.Theme.Border)
                 .Expand());
     }
 
@@ -513,6 +533,7 @@ public sealed partial class PromptService : IPromptService
         string Title,
         string SearchPlaceholder,
         int PageSize,
+        ThemePalette Theme,
         Func<T, IRenderable> RenderItem,
         string? DetailTitle = null,
         Func<T, string?>? RenderDetail = null,
