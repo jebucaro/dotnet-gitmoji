@@ -24,7 +24,7 @@ public class ConfigurationServiceTests
         Assert.True(config.ShowSemverBadge);
         Assert.False(config.NormalizeCommitFormat);
         Assert.Null(config.Scopes);
-        Assert.Equal(Themes.DefaultName, config.Theme);
+        Assert.Null(config.Theme);
     }
 
     [Fact]
@@ -210,35 +210,10 @@ public class ConfigurationServiceTests
         }
     }
 
-    [Fact]
-    public async Task LoadAsync_WhenConfigHasUnknownTheme_FallsBackToDefault()
-    {
-        IGitService? gitService = Substitute.For<IGitService>();
-        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-        gitService.GetRepositoryRootAsync().Returns(tempDir);
-
-        string configJson = """{ "theme": "solarized" }""";
-        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
-            TestContext.Current.CancellationToken);
-
-        try
-        {
-            ConfigurationService service = new(gitService);
-            ToolConfiguration config = await service.LoadAsync();
-
-            Assert.Equal(Themes.DefaultName, config.Theme);
-        }
-        finally
-        {
-            Directory.Delete(tempDir, true);
-        }
-    }
-
     [Theory]
-    [InlineData("catppuccin-mocha")]
-    [InlineData("Monokai")]
-    public async Task LoadAsync_WhenConfigHasValidTheme_LoadsIt(string theme)
+    [InlineData("monokai")]
+    [InlineData("solarized")]
+    public async Task LoadAsync_WhenRepoConfigHasTheme_IgnoresIt(string theme)
     {
         IGitService? gitService = Substitute.For<IGitService>();
         string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
@@ -249,16 +224,172 @@ public class ConfigurationServiceTests
         await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), configJson,
             TestContext.Current.CancellationToken);
 
+        byte[]? globalBackup = await BackupAndDeleteGlobalConfigAsync();
+        string? envBackup = SwapThemeEnvironmentVariable(null);
         try
         {
             ConfigurationService service = new(gitService);
             ToolConfiguration config = await service.LoadAsync();
 
-            Assert.Equal(theme, config.Theme);
+            Assert.Null(config.Theme);
         }
         finally
         {
+            SwapThemeEnvironmentVariable(envBackup);
+            await RestoreGlobalConfigAsync(globalBackup);
             Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenGlobalConfigHasTheme_AppliesItOverRepoConfig()
+    {
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        await File.WriteAllTextAsync(Path.Combine(tempDir, ".gitmojirc.json"), """{ "scopePrompt": true }""",
+            TestContext.Current.CancellationToken);
+
+        byte[]? globalBackup = await BackupAndDeleteGlobalConfigAsync();
+        string? envBackup = SwapThemeEnvironmentVariable(null);
+        try
+        {
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await File.WriteAllTextAsync(DotnetGitmojiPaths.GlobalConfigPath,
+                """{ "theme": "catppuccin-mocha" }""", TestContext.Current.CancellationToken);
+
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
+
+            Assert.Equal("catppuccin-mocha", config.Theme);
+            Assert.True(config.ScopePrompt); // repo config still wins for everything else
+        }
+        finally
+        {
+            SwapThemeEnvironmentVariable(envBackup);
+            await RestoreGlobalConfigAsync(globalBackup);
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenEnvironmentThemeSet_OverridesGlobalConfig()
+    {
+        IGitService? gitService = Substitute.For<IGitService>();
+        gitService.GetRepositoryRootAsync()
+            .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
+
+        byte[]? globalBackup = await BackupAndDeleteGlobalConfigAsync();
+        string? envBackup = SwapThemeEnvironmentVariable("catppuccin-mocha");
+        try
+        {
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await File.WriteAllTextAsync(DotnetGitmojiPaths.GlobalConfigPath,
+                """{ "theme": "monokai" }""", TestContext.Current.CancellationToken);
+
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
+
+            Assert.Equal("catppuccin-mocha", config.Theme);
+        }
+        finally
+        {
+            SwapThemeEnvironmentVariable(envBackup);
+            await RestoreGlobalConfigAsync(globalBackup);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_WhenEnvironmentThemeInvalid_FallsBackToGlobalConfig()
+    {
+        IGitService? gitService = Substitute.For<IGitService>();
+        gitService.GetRepositoryRootAsync()
+            .Returns(Task.FromException<string>(new InvalidOperationException("not a git repo")));
+
+        byte[]? globalBackup = await BackupAndDeleteGlobalConfigAsync();
+        string? envBackup = SwapThemeEnvironmentVariable("solarized");
+        try
+        {
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await File.WriteAllTextAsync(DotnetGitmojiPaths.GlobalConfigPath,
+                """{ "theme": "monokai" }""", TestContext.Current.CancellationToken);
+
+            ConfigurationService service = new(gitService);
+            ToolConfiguration config = await service.LoadAsync();
+
+            Assert.Equal("monokai", config.Theme);
+        }
+        finally
+        {
+            SwapThemeEnvironmentVariable(envBackup);
+            await RestoreGlobalConfigAsync(globalBackup);
+        }
+    }
+
+    [Fact]
+    public async Task SaveThemePreferenceAsync_WritesGlobalConfigAndLeavesRepoConfigUntouched()
+    {
+        IGitService? gitService = Substitute.For<IGitService>();
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dotnet-gitmoji-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        gitService.GetRepositoryRootAsync().Returns(tempDir);
+
+        string repoConfigPath = Path.Combine(tempDir, ".gitmojirc.json");
+        string repoContent = """{ "scopePrompt": true }""";
+        await File.WriteAllTextAsync(repoConfigPath, repoContent, TestContext.Current.CancellationToken);
+
+        byte[]? globalBackup = await BackupAndDeleteGlobalConfigAsync();
+        try
+        {
+            ConfigurationService service = new(gitService);
+            await service.SaveThemePreferenceAsync("monokai");
+
+            string globalContent = await File.ReadAllTextAsync(DotnetGitmojiPaths.GlobalConfigPath,
+                TestContext.Current.CancellationToken);
+            Assert.Contains("\"theme\": \"monokai\"", globalContent);
+            Assert.Equal(repoContent,
+                await File.ReadAllTextAsync(repoConfigPath, TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            await RestoreGlobalConfigAsync(globalBackup);
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    private static string? SwapThemeEnvironmentVariable(string? value)
+    {
+        string? previous = Environment.GetEnvironmentVariable(ConfigurationService.ThemeEnvironmentVariable);
+        Environment.SetEnvironmentVariable(ConfigurationService.ThemeEnvironmentVariable, value);
+        return previous;
+    }
+
+    private static async Task<byte[]?> BackupAndDeleteGlobalConfigAsync()
+    {
+        string globalPath = DotnetGitmojiPaths.GlobalConfigPath;
+        if (!File.Exists(globalPath))
+        {
+            return null;
+        }
+
+        byte[] backup = await File.ReadAllBytesAsync(globalPath, TestContext.Current.CancellationToken);
+        File.Delete(globalPath);
+        return backup;
+    }
+
+    private static async Task RestoreGlobalConfigAsync(byte[]? backup)
+    {
+        string globalPath = DotnetGitmojiPaths.GlobalConfigPath;
+        if (backup is not null)
+        {
+            Directory.CreateDirectory(DotnetGitmojiPaths.UserDataDirectory);
+            await File.WriteAllBytesAsync(globalPath, backup, TestContext.Current.CancellationToken);
+        }
+        else if (File.Exists(globalPath))
+        {
+            File.Delete(globalPath);
         }
     }
 

@@ -75,7 +75,8 @@ public sealed partial class ConfigCommand : ICommand
                 .Title("Select color theme:")
                 .PageSize(Themes.Names.Count + 1)
                 .AddChoices(Themes.Names));
-        AnsiConsole.MarkupLine($"Theme: {Markup.Escape(selectedTheme)} (applies on next run)");
+        AnsiConsole.MarkupLine(
+            $"Theme: {Markup.Escape(selectedTheme)} (personal setting, saved to the global config)");
 
         WriteSection(theme, "Git Behavior", "Staging, signing, and convention enforcement");
         bool autoAdd =
@@ -101,7 +102,7 @@ public sealed partial class ConfigCommand : ICommand
         config.MaxTitleLength = maxTitleLength;
         config.TrimTitleWhenExceeded = trimTitleWhenExceeded;
         config.ShowSemverBadge = showSemverBadge;
-        config.Theme = selectedTheme;
+        config.Theme = null; // personal setting — never written to the target file, see below
         config.AutoAdd = autoAdd;
         config.SignedCommit = signedCommit;
         config.EnforceConvention = enforceConvention;
@@ -112,7 +113,11 @@ public sealed partial class ConfigCommand : ICommand
         {
             await AnsiConsole.Status()
                 .StartAsync("Saving configuration...",
-                    async _ => { await _configurationService.SaveAsync(config, target); });
+                    async _ =>
+                    {
+                        await _configurationService.SaveAsync(config, target);
+                        await _configurationService.SaveThemePreferenceAsync(selectedTheme);
+                    });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
