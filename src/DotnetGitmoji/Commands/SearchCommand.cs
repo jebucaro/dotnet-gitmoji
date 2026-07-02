@@ -3,6 +3,7 @@ using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
 using Spectre.Console;
 
 namespace DotnetGitmoji.Commands;
@@ -11,10 +12,12 @@ namespace DotnetGitmoji.Commands;
 public sealed partial class SearchCommand : ICommand
 {
     private readonly IGitmojiProvider _gitmojiProvider;
+    private readonly IConfigurationService _configurationService;
 
-    public SearchCommand(IGitmojiProvider gitmojiProvider)
+    public SearchCommand(IGitmojiProvider gitmojiProvider, IConfigurationService configurationService)
     {
         _gitmojiProvider = gitmojiProvider;
+        _configurationService = configurationService;
     }
 
     [CommandParameter(0, Name = "keyword",
@@ -23,13 +26,16 @@ public sealed partial class SearchCommand : ICommand
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
+        ToolConfiguration config = await _configurationService.LoadAsync();
+        ThemePalette theme = Themes.Resolve(config.Theme);
         IReadOnlyList<Gitmoji> results = await _gitmojiProvider.SearchAsync(Keyword);
 
         string escapedKeyword = Markup.Escape(Keyword);
 
         if (results.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[grey]No gitmojis found matching '[white]{escapedKeyword}[/]'.[/]");
+            AnsiConsole.MarkupLine(
+                $"[{theme.MutedMarkup}]No gitmojis found matching '[{theme.EmphasisMarkup}]{escapedKeyword}[/]'.[/]");
             return;
         }
 
@@ -43,15 +49,16 @@ public sealed partial class SearchCommand : ICommand
         foreach (Gitmoji g in results)
         {
             table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description),
-                new Markup(FormatSemver(g.Semver)));
+                new Markup(FormatSemver(g.Semver, theme)));
         }
 
-        AnsiConsole.MarkupLine($"[grey]Found {results.Count} gitmoji(s) matching '[white]{escapedKeyword}[/]':[/]");
+        AnsiConsole.MarkupLine(
+            $"[{theme.MutedMarkup}]Found {results.Count} gitmoji(s) matching '[{theme.EmphasisMarkup}]{escapedKeyword}[/]':[/]");
         AnsiConsole.Write(table);
     }
 
-    private static string FormatSemver(string? semver)
+    private static string FormatSemver(string? semver, ThemePalette theme)
     {
-        return semver is null ? string.Empty : $"[blue]{semver}[/]";
+        return semver is null ? string.Empty : $"[{theme.AccentMarkup}]{semver}[/]";
     }
 }

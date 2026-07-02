@@ -3,6 +3,7 @@ using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
 using Spectre.Console;
 
 namespace DotnetGitmoji.Commands;
@@ -34,6 +35,9 @@ public sealed partial class InitCommand : ICommand
     {
         try
         {
+            ToolConfiguration config = await _configurationService.LoadAsync();
+            ThemePalette theme = Themes.Resolve(config.Theme);
+
             if (await _gitService.IsHookInstalledAsync())
             {
                 throw new CommandException("The prepare-commit-msg hook is already installed.", 1);
@@ -42,18 +46,20 @@ public sealed partial class InitCommand : ICommand
             HuskySetupMode? huskySetupMode = ParseHuskySetupMode();
             HuskyInstallKind huskyKind = await _gitService.DetectHuskyKindAsync();
 
-            await InstallHookAsync(huskyKind, huskySetupMode);
+            await InstallHookAsync(huskyKind, huskySetupMode, theme);
 
             if (CreateConfig)
             {
                 string? createdPath = await _configurationService.CreateRepoConfigAsync();
                 if (createdPath is null)
                 {
-                    AnsiConsole.MarkupLine("[yellow]![/] [grey].gitmojirc.json[/] already exists, skipping.");
+                    AnsiConsole.MarkupLine(
+                        $"[{theme.WarningMarkup}]![/] [{theme.MutedMarkup}].gitmojirc.json[/] already exists, skipping.");
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine("[green]✓[/] [grey].gitmojirc.json[/] created with defaults.");
+                    AnsiConsole.MarkupLine(
+                        $"[{theme.SuccessMarkup}]✓[/] [{theme.MutedMarkup}].gitmojirc.json[/] created with defaults.");
                 }
             }
         }
@@ -63,13 +69,13 @@ public sealed partial class InitCommand : ICommand
         }
     }
 
-    private async Task InstallHookAsync(HuskyInstallKind huskyKind, HuskySetupMode? huskySetupMode)
+    private async Task InstallHookAsync(HuskyInstallKind huskyKind, HuskySetupMode? huskySetupMode, ThemePalette theme)
     {
         if (huskyKind == HuskyInstallKind.JsHusky)
         {
             AnsiConsole.MarkupLine(
-                "[yellow]JavaScript Husky detected ([grey].husky/_/husky.sh[/]).[/]\n" +
-                "[yellow]This command does not modify JavaScript Husky-managed hooks.[/]\n" +
+                $"[{theme.WarningMarkup}]JavaScript Husky detected ([{theme.MutedMarkup}].husky/_/husky.sh[/]).[/]\n" +
+                $"[{theme.WarningMarkup}]This command does not modify JavaScript Husky-managed hooks.[/]\n" +
                 "No files were modified.\n\n" +
                 "Consider migrating to Husky.Net: [link]https://alirezanet.github.io/Husky.Net/[/]");
             return;
@@ -94,8 +100,8 @@ public sealed partial class InitCommand : ICommand
             }
 
             AnsiConsole.MarkupLine(
-                $"[green]✓[/] Husky.Net [grey]prepare-commit-msg[/] hook configured " +
-                $"using [white]{GetModeLabel(huskySetupMode.Value)}[/] mode.");
+                $"[{theme.SuccessMarkup}]✓[/] Husky.Net [{theme.MutedMarkup}]prepare-commit-msg[/] hook configured " +
+                $"using [{theme.EmphasisMarkup}]{GetModeLabel(huskySetupMode.Value)}[/] mode.");
         }
         else
         {
@@ -105,7 +111,8 @@ public sealed partial class InitCommand : ICommand
             }
 
             await _gitService.InstallHookDirectAsync();
-            AnsiConsole.MarkupLine("[green]✓[/] [grey]prepare-commit-msg[/] hook installed successfully.");
+            AnsiConsole.MarkupLine(
+                $"[{theme.SuccessMarkup}]✓[/] [{theme.MutedMarkup}]prepare-commit-msg[/] hook installed successfully.");
         }
     }
 

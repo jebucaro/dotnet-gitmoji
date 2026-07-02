@@ -4,6 +4,7 @@ using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
 using Spectre.Console;
 
 namespace DotnetGitmoji.Commands;
@@ -43,7 +44,9 @@ public sealed partial class ConfigCommand : ICommand
             throw new CommandException($"Failed to load configuration: {ex.Message}", 1);
         }
 
-        WriteSection("Message Format", "How commit subjects are structured");
+        ThemePalette theme = Themes.Resolve(config.Theme);
+
+        WriteSection(theme, "Message Format", "How commit subjects are structured");
         EmojiFormat emojiFormat = await AnsiConsole.PromptAsync(
             new SelectionPrompt<EmojiFormat>()
                 .Title("Select emoji format:")
@@ -56,19 +59,25 @@ public sealed partial class ConfigCommand : ICommand
             config.NormalizeCommitFormat);
         bool capitalizeTitle = await AnsiConsole.ConfirmAsync("Capitalize commit title?", config.CapitalizeTitle);
 
-        WriteSection("Scope", "Scope prompting and predefined scope list");
+        WriteSection(theme, "Scope", "Scope prompting and predefined scope list");
         bool scopePrompt = await AnsiConsole.ConfirmAsync("Prompt for scope?", config.ScopePrompt);
         string[]? scopes = await PromptScopesAsync(config);
 
-        WriteSection("Body & Title", "Message body and title length constraints");
+        WriteSection(theme, "Body & Title", "Message body and title length constraints");
         bool messagePrompt = await AnsiConsole.ConfirmAsync("Prompt for commit message?", config.MessagePrompt);
-        (int? maxTitleLength, bool trimTitleWhenExceeded) = await PromptMaxTitleLengthAsync(config);
+        (int? maxTitleLength, bool trimTitleWhenExceeded) = await PromptMaxTitleLengthAsync(config, theme);
 
-        WriteSection("Display", "What's shown in the gitmoji selector");
+        WriteSection(theme, "Display", "Selector contents and color theme");
         bool showSemverBadge =
             await AnsiConsole.ConfirmAsync("Show semver badge in gitmoji selector?", config.ShowSemverBadge);
+        string selectedTheme = await AnsiConsole.PromptAsync(
+            new SelectionPrompt<string>()
+                .Title("Select color theme:")
+                .PageSize(Themes.Names.Count + 1)
+                .AddChoices(Themes.Names));
+        AnsiConsole.MarkupLine($"Theme: {Markup.Escape(selectedTheme)} (applies on next run)");
 
-        WriteSection("Git Behavior", "Staging, signing, and convention enforcement");
+        WriteSection(theme, "Git Behavior", "Staging, signing, and convention enforcement");
         bool autoAdd =
             await AnsiConsole.ConfirmAsync("Auto-add changes before commit? (client mode only)", config.AutoAdd);
         bool signedCommit =
@@ -77,11 +86,11 @@ public sealed partial class ConfigCommand : ICommand
             "Enforce gitmoji convention on all commits (including IDE/non-interactive)?",
             config.EnforceConvention);
 
-        WriteSection("Advanced", "API endpoint for gitmoji data");
+        WriteSection(theme, "Advanced", "API endpoint for gitmoji data");
         string gitmojisUrl = await AnsiConsole.PromptAsync(
             new TextPrompt<string>("Gitmojis API URL:")
                 .DefaultValue(config.GitmojisUrl)
-                .Validate(ValidateGitmojisUrl));
+                .Validate(url => ValidateGitmojisUrl(url, theme)));
 
         config.EmojiFormat = emojiFormat;
         config.NormalizeCommitFormat = normalizeCommitFormat;
@@ -92,6 +101,7 @@ public sealed partial class ConfigCommand : ICommand
         config.MaxTitleLength = maxTitleLength;
         config.TrimTitleWhenExceeded = trimTitleWhenExceeded;
         config.ShowSemverBadge = showSemverBadge;
+        config.Theme = selectedTheme;
         config.AutoAdd = autoAdd;
         config.SignedCommit = signedCommit;
         config.EnforceConvention = enforceConvention;
@@ -115,7 +125,8 @@ public sealed partial class ConfigCommand : ICommand
             ConfigSaveTarget.Local => ".gitmojirc.json",
             _ => "config file"
         };
-        AnsiConsole.MarkupLine($"[green]✔[/] Configuration saved to [grey]{Markup.Escape(location)}[/]");
+        AnsiConsole.MarkupLine(
+            $"[{theme.SuccessMarkup}]✔[/] Configuration saved to [{theme.MutedMarkup}]{Markup.Escape(location)}[/]");
     }
 
     internal ConfigSaveTarget DetermineTarget()
@@ -134,7 +145,7 @@ public sealed partial class ConfigCommand : ICommand
     }
 
     private static async Task<(int? MaxTitleLength, bool TrimTitleWhenExceeded)> PromptMaxTitleLengthAsync(
-        ToolConfiguration config)
+        ToolConfiguration config, ThemePalette theme)
     {
         string hint = config.MaxTitleLength is not null
             ? $"current: {config.MaxTitleLength.Value}, "
@@ -142,7 +153,7 @@ public sealed partial class ConfigCommand : ICommand
         string input = await AnsiConsole.PromptAsync(
             new TextPrompt<string>($"Maximum commit title length ({hint}leave empty to disable):")
                 .AllowEmpty()
-                .Validate(ValidateMaxTitleLengthInput));
+                .Validate(value => ValidateMaxTitleLengthInput(value, theme)));
 
         int? maxTitleLength = string.IsNullOrWhiteSpace(input)
             ? null
@@ -195,29 +206,29 @@ public sealed partial class ConfigCommand : ICommand
         // zero-width space breaks Spectre.Console :name: emoji pattern
     }
 
-    internal static ValidationResult ValidateMaxTitleLengthInput(string input)
+    internal static ValidationResult ValidateMaxTitleLengthInput(string input, ThemePalette theme)
     {
         return string.IsNullOrWhiteSpace(input) ||
                (int.TryParse(input, NumberStyles.None, CultureInfo.InvariantCulture, out int value) && value > 0)
             ? ValidationResult.Success()
-            : ValidationResult.Error("[red]Must be a positive integer or empty[/]");
+            : ValidationResult.Error($"[{theme.ErrorMarkup}]Must be a positive integer or empty[/]");
     }
 
-    internal static ValidationResult ValidateGitmojisUrl(string url)
+    internal static ValidationResult ValidateGitmojisUrl(string url, ThemePalette theme)
     {
         return Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && uri.Scheme == Uri.UriSchemeHttps
             ? ValidationResult.Success()
-            : ValidationResult.Error("[red]Must be a valid HTTPS URL[/]");
+            : ValidationResult.Error($"[{theme.ErrorMarkup}]Must be a valid HTTPS URL[/]");
     }
 
-    private static void WriteSection(string title, string description)
+    private static void WriteSection(ThemePalette theme, string title, string description)
     {
         AnsiConsole.WriteLine();
         AnsiConsole.Write(
             new Panel(new Markup($"[dim]{Markup.Escape(description)}[/]"))
-                .Header($"[bold green]{Markup.Escape(title)}[/]")
+                .Header($"[bold {theme.SuccessMarkup}]{Markup.Escape(title)}[/]")
                 .RoundedBorder()
-                .BorderColor(Color.Green)
+                .BorderColor(theme.Border)
                 .Expand());
     }
 }

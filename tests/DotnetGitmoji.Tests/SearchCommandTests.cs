@@ -12,10 +12,12 @@ public class SearchCommandTests
     private const string MarkupKeyword = "<bug>";
 
     private readonly IGitmojiProvider _gitmojiProvider = Substitute.For<IGitmojiProvider>();
+    private readonly IConfigurationService _configService = Substitute.For<IConfigurationService>();
 
     private SearchCommand CreateCommand(string keyword = TestKeyword)
     {
-        return new SearchCommand(_gitmojiProvider) { Keyword = keyword };
+        _configService.LoadAsync().Returns(new ToolConfiguration());
+        return new SearchCommand(_gitmojiProvider, _configService) { Keyword = keyword };
     }
 
     [Fact]

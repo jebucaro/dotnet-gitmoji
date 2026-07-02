@@ -2,6 +2,7 @@ using CliFx;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Commands;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
 using NSubstitute;
 using Spectre.Console;
 
@@ -50,7 +51,7 @@ public class ConfigCommandTests
     [Fact]
     public void ValidateMaxTitleLengthInput_WhenEmpty_ReturnsSuccess()
     {
-        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput(string.Empty);
+        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput(string.Empty, Themes.Default);
 
         Assert.True(result.Successful);
     }
@@ -58,7 +59,7 @@ public class ConfigCommandTests
     [Fact]
     public void ValidateMaxTitleLengthInput_WhenPositiveInteger_ReturnsSuccess()
     {
-        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput("72");
+        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput("72", Themes.Default);
 
         Assert.True(result.Successful);
     }
@@ -70,7 +71,7 @@ public class ConfigCommandTests
     [InlineData("1.5")]
     public void ValidateMaxTitleLengthInput_WhenInvalidInput_ReturnsError(string input)
     {
-        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput(input);
+        ValidationResult result = ConfigCommand.ValidateMaxTitleLengthInput(input, Themes.Default);
 
         Assert.False(result.Successful);
         Assert.Contains(PositiveIntegerErrorFragment, result.Message, StringComparison.OrdinalIgnoreCase);
@@ -79,7 +80,7 @@ public class ConfigCommandTests
     [Fact]
     public void ValidateGitmojisUrl_WhenHttpsUrl_ReturnsSuccess()
     {
-        ValidationResult result = ConfigCommand.ValidateGitmojisUrl("https://gitmoji.dev/api/gitmojis");
+        ValidationResult result = ConfigCommand.ValidateGitmojisUrl("https://gitmoji.dev/api/gitmojis", Themes.Default);
 
         Assert.True(result.Successful);
     }
@@ -90,7 +91,7 @@ public class ConfigCommandTests
     [InlineData("not-a-url")]
     public void ValidateGitmojisUrl_WhenNonHttpsOrInvalidUrl_ReturnsError(string url)
     {
-        ValidationResult result = ConfigCommand.ValidateGitmojisUrl(url);
+        ValidationResult result = ConfigCommand.ValidateGitmojisUrl(url, Themes.Default);
 
         Assert.False(result.Successful);
         Assert.Contains(HttpsUrlErrorFragment, result.Message, StringComparison.OrdinalIgnoreCase);
