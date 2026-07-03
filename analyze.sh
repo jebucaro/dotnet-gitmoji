@@ -20,6 +20,9 @@ if [[ -z "${SONAR_TOKEN:-}" ]]; then
   exit 1
 fi
 
+# Skip the Husky hook-install MSBuild target during restore/build; this is an analysis run, not a commit workflow.
+export HUSKY=0
+
 dotnet tool restore
 
 rm -rf tests/DotnetGitmoji.Tests/TestResults/

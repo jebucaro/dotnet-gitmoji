@@ -27,6 +27,9 @@ if (-not $env:SONAR_TOKEN) {
 
 Push-Location $PSScriptRoot
 try {
+    # Skip the Husky hook-install MSBuild target during restore/build; this is an analysis run, not a commit workflow.
+    $env:HUSKY = '0'
+
     dotnet tool restore
 
     if (Test-Path 'tests/DotnetGitmoji.Tests/TestResults') {
