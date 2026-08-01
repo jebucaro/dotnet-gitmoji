@@ -2,6 +2,7 @@ using CliFx.Infrastructure;
 using DotnetGitmoji.Commands;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
 using NSubstitute;
 
 namespace DotnetGitmoji.Tests;
@@ -57,5 +58,51 @@ public class SearchCommandTests
         await command.ExecuteAsync(console);
 
         await _gitmojiProvider.Received(1).SearchAsync(MarkupKeyword);
+    }
+
+    [Fact]
+    public void HighlightKeyword_WhenKeywordFound_WrapsMatchInEmphasisMarkup()
+    {
+        ThemePalette theme = Themes.Default;
+
+        string result = SearchCommand.HighlightKeyword("Fix a bug", "bug", theme);
+
+        Assert.Equal($"Fix a [{theme.EmphasisMarkup}]bug[/]", result);
+    }
+
+    [Fact]
+    public void HighlightKeyword_IsCaseInsensitive()
+    {
+        ThemePalette theme = Themes.Default;
+
+        string result = SearchCommand.HighlightKeyword("Fix a Bug", "bug", theme);
+
+        Assert.Equal($"Fix a [{theme.EmphasisMarkup}]Bug[/]", result);
+    }
+
+    [Fact]
+    public void HighlightKeyword_WhenKeywordNotFound_ReturnsValueUnchanged()
+    {
+        string result = SearchCommand.HighlightKeyword("Improve structure", "xyz", Themes.Default);
+
+        Assert.Equal("Improve structure", result);
+    }
+
+    [Fact]
+    public void HighlightKeyword_WhenKeywordEmpty_ReturnsValueUnchanged()
+    {
+        string result = SearchCommand.HighlightKeyword("Improve structure", "", Themes.Default);
+
+        Assert.Equal("Improve structure", result);
+    }
+
+    [Fact]
+    public void HighlightKeyword_WhenValueContainsMarkupChars_EscapesNonMatchingParts()
+    {
+        ThemePalette theme = Themes.Default;
+
+        string result = SearchCommand.HighlightKeyword("Improve [core] structure", "core", theme);
+
+        Assert.Equal($"Improve [[[{theme.EmphasisMarkup}]core[/]]] structure", result);
     }
 }
