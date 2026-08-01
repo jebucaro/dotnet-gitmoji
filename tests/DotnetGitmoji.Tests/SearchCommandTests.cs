@@ -105,4 +105,38 @@ public class SearchCommandTests
 
         Assert.Equal($"Improve [[[{theme.EmphasisMarkup}]core[/]]] structure", result);
     }
+
+    [Fact]
+    public void HighlightKeyword_WhenValueIsColonWrappedAndKeywordNotFound_NeutralizesSoEmojiNotConverted()
+    {
+        // :building_construction: is a valid emoji shortcode. Without neutralization,
+        // Spectre.Console's Markup parser would convert it to the bare emoji glyph.
+        // The zero-width space after the leading colon breaks the pattern.
+        string result = SearchCommand.HighlightKeyword(":building_construction:", "xyz", Themes.Default);
+
+        // Should contain the zero-width space after first colon, which prevents emoji conversion
+        Assert.Contains(":​", result);
+    }
+
+    [Fact]
+    public void HighlightKeyword_WhenValueIsColonWrappedAndKeywordMatches_HighlightsCorrectly()
+    {
+        ThemePalette theme = Themes.Default;
+
+        string result = SearchCommand.HighlightKeyword(":bug:", "bug", theme);
+
+        // Should neutralize the colon-wrapped pattern and still highlight the keyword
+        Assert.Contains($"[{theme.EmphasisMarkup}]bug[/]", result);
+        Assert.Contains(":​", result); // Zero-width space for neutralization
+    }
+
+    [Fact]
+    public void HighlightKeyword_WhenValueIsColonWrappedAndKeywordEmpty_NeutralizesSoEmojiNotConverted()
+    {
+        // With empty keyword, should still neutralize to prevent emoji conversion
+        string result = SearchCommand.HighlightKeyword(":rocket:", "", Themes.Default);
+
+        // Should contain the zero-width space after first colon, which prevents emoji conversion
+        Assert.Contains(":​", result);
+    }
 }

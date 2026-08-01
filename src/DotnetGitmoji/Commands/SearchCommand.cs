@@ -68,20 +68,36 @@ public sealed partial class SearchCommand : ICommand
 
     internal static string HighlightKeyword(string value, string keyword, ThemePalette theme)
     {
+        // Spectre.Console's Markup parser converts ":word:"-shaped text to an emoji glyph if
+        // the word matches a known emoji shortcode name — gitmoji Code values are always
+        // exactly that shape. Insert a zero-width space to break the pattern while staying
+        // visually invisible, same technique as ConfigCommand.FormatEmojiChoice.
+        string safeValue = NeutralizeEmojiShortcode(value);
+
         if (string.IsNullOrEmpty(keyword))
         {
-            return Markup.Escape(value);
+            return Markup.Escape(safeValue);
         }
 
-        int index = value.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
+        int index = safeValue.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
         if (index < 0)
         {
-            return Markup.Escape(value);
+            return Markup.Escape(safeValue);
         }
 
-        string before = Markup.Escape(value[..index]);
-        string match = Markup.Escape(value[index..(index + keyword.Length)]);
-        string after = Markup.Escape(value[(index + keyword.Length)..]);
+        string before = Markup.Escape(safeValue[..index]);
+        string match = Markup.Escape(safeValue[index..(index + keyword.Length)]);
+        string after = Markup.Escape(safeValue[(index + keyword.Length)..]);
         return $"{before}[{theme.EmphasisMarkup}]{match}[/]{after}";
+    }
+
+    private static string NeutralizeEmojiShortcode(string value)
+    {
+        if (value.Length >= 2 && value[0] == ':' && value[^1] == ':')
+        {
+            return $":​{value[1..]}";
+        }
+
+        return value;
     }
 }
