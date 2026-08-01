@@ -155,6 +155,76 @@ public class HookCommandTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenInteractiveAndTitleEmpty_WarnsToStderrWithThemedMarkup()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync().Returns(new ToolConfiguration());
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message without gitmoji", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
+            _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>()).Returns((string?)null);
+
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
+
+            await command.ExecuteAsync(console);
+
+            string stderr = console.ReadErrorString();
+            Assert.Contains("\u001b[", stderr); // ANSI CSI -- proves the message went through the themed renderer
+            Assert.Contains("empty title, keeping original commit message.", stderr);
+            await _commitMessageService.DidNotReceive()
+                .WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenInteractiveAndTitleExceedsLimit_WarnsToStderrWithThemedMarkup()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            _configService.LoadAsync().Returns(new ToolConfiguration { MaxTitleLength = 5 });
+            _gitmojiProvider.GetAllAsync().Returns([ArtGitmoji]);
+            _commitMessageService.ReadMessageAsync(Arg.Any<string>())
+                .Returns(new CommitMessageContent("bad message without gitmoji", null));
+            _validator.Validate(Arg.Any<CommitMessageContent>(), Arg.Any<IReadOnlyList<Gitmoji>>())
+                .Returns(new ValidationResult(false, null, null, null, null));
+            _promptService.IsInteractive.Returns(true);
+            _promptService.SelectGitmoji(Arg.Any<IReadOnlyList<Gitmoji>>(), Arg.Any<ToolConfiguration>())
+                .Returns(ArtGitmoji);
+            _promptService.AskTitle(Arg.Any<ToolConfiguration>(), Arg.Any<string?>())
+                .Returns(new string('a', 20));
+
+            HookCommand command = CreateCommand(tempFile);
+            FakeInMemoryConsole console = new();
+
+            await command.ExecuteAsync(console);
+
+            string stderr = console.ReadErrorString();
+            Assert.Contains("\u001b[", stderr); // ANSI CSI -- proves the message went through the themed renderer
+            Assert.Contains("Title exceeds maximum length of 5 characters.", stderr);
+            Assert.Contains("Keeping original commit message.", stderr);
+            await _commitMessageService.DidNotReceive()
+                .WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenReadMessageFails_WarnsToStderrAndSkipsProcessing()
     {
         string tempFile = Path.GetTempFileName();
