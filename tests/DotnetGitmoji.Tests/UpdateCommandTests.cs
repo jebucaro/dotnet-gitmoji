@@ -7,6 +7,7 @@ using NSubstitute;
 
 namespace DotnetGitmoji.Tests;
 
+[Collection(SpectreConsoleCollection.Name)]
 public class UpdateCommandTests
 {
     private readonly IGitmojiProvider _gitmojiProvider = Substitute.For<IGitmojiProvider>();
