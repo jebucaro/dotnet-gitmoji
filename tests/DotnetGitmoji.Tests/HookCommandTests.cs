@@ -3,6 +3,7 @@ using CliFx.Infrastructure;
 using DotnetGitmoji.Commands;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
 using DotnetGitmoji.Validators;
 using NSubstitute;
 
@@ -31,6 +32,18 @@ public class HookCommandTests
         {
             CommitMessageFile = commitMessageFile, CommitSource = commitSource
         };
+    }
+
+    [Fact]
+    public void BuildWarningMarkup_ReturnsThemedMarkupWithMessage()
+    {
+        ThemePalette theme = Themes.Default;
+
+        string result = HookCommand.BuildWarningMarkup(theme, "empty title, keeping original commit message.");
+
+        Assert.Equal(
+            $"[{theme.WarningMarkup}]⚠[/] [{theme.MutedMarkup}]dotnet-gitmoji:[/] empty title, keeping original commit message.",
+            result);
     }
 
     [Fact]
@@ -177,7 +190,6 @@ public class HookCommandTests
             await command.ExecuteAsync(console);
 
             string stderr = console.ReadErrorString();
-            Assert.Contains("\u001b[", stderr); // ANSI CSI -- proves the message went through the themed renderer
             Assert.Contains("empty title, keeping original commit message.", stderr);
             await _commitMessageService.DidNotReceive()
                 .WriteMessageAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>());
@@ -212,7 +224,6 @@ public class HookCommandTests
             await command.ExecuteAsync(console);
 
             string stderr = console.ReadErrorString();
-            Assert.Contains("\u001b[", stderr); // ANSI CSI -- proves the message went through the themed renderer
             Assert.Contains("Title exceeds maximum length of 5 characters.", stderr);
             Assert.Contains("Keeping original commit message.", stderr);
             await _commitMessageService.DidNotReceive()

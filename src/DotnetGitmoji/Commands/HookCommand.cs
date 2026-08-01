@@ -219,6 +219,11 @@ public sealed partial class HookCommand : ICommand
         }
     }
 
+    internal static string BuildWarningMarkup(ThemePalette theme, string message)
+    {
+        return $"[{theme.WarningMarkup}]⚠[/] [{theme.MutedMarkup}]dotnet-gitmoji:[/] {message}";
+    }
+
     private static string RenderWarning(ThemePalette theme, string message)
     {
         StringWriter writer = new();
@@ -232,7 +237,7 @@ public sealed partial class HookCommand : ICommand
         // columns. These warnings must stay a single line, so the profile width is uncapped.
         console.Profile.Width = int.MaxValue;
 
-        console.Markup($"[{theme.WarningMarkup}]⚠[/] [{theme.MutedMarkup}]dotnet-gitmoji:[/] {message}");
+        console.Markup(BuildWarningMarkup(theme, message));
         return writer.ToString();
     }
 
