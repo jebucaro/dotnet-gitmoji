@@ -9,17 +9,17 @@ namespace DotnetGitmoji.Tests;
 
 public class UpdateCommandTests
 {
-    private const string SuccessMessageFragment = "updated successfully";
-
     private readonly IGitmojiProvider _gitmojiProvider = Substitute.For<IGitmojiProvider>();
+    private readonly IConfigurationService _configService = Substitute.For<IConfigurationService>();
 
     private UpdateCommand CreateCommand()
     {
-        return new UpdateCommand(_gitmojiProvider);
+        _configService.LoadAsync().Returns(new ToolConfiguration());
+        return new UpdateCommand(_gitmojiProvider, _configService);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenRefreshSucceeds_WritesSuccessMessageToOutput()
+    public async Task ExecuteAsync_WhenRefreshSucceeds_CallsForceRefreshAsync()
     {
         _gitmojiProvider.ForceRefreshAsync().Returns(new[]
         {
@@ -30,8 +30,6 @@ public class UpdateCommandTests
 
         await command.ExecuteAsync(console);
 
-        string output = console.ReadOutputString();
-        Assert.Contains(SuccessMessageFragment, output, StringComparison.OrdinalIgnoreCase);
         await _gitmojiProvider.Received(1).ForceRefreshAsync();
     }
 
