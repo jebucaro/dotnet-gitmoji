@@ -95,7 +95,7 @@ public sealed partial class SearchCommand : ICommand
     {
         if (value.Length >= 2 && value[0] == ':' && value[^1] == ':')
         {
-            return $":​{value[1..]}";
+            return $":\u200B{value[1..]}";
         }
 
         return value;
