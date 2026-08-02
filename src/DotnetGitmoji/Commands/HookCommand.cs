@@ -72,7 +72,7 @@ public sealed partial class HookCommand : ICommand
         ToolConfiguration config = await _configService.LoadAsync();
         IReadOnlyList<Gitmoji> gitmojis = await _gitmojiProvider.GetAllAsync();
 
-        DotnetGitmoji.Validators.ValidationResult result = _validator.Validate(commitMessage, gitmojis);
+        Validators.ValidationResult result = _validator.Validate(commitMessage, gitmojis);
 
         if (result.IsValid)
         {
@@ -107,7 +107,7 @@ public sealed partial class HookCommand : ICommand
 
     private async Task HandleIncompleteMessageAsync(
         IConsole console,
-        DotnetGitmoji.Validators.ValidationResult result,
+        Validators.ValidationResult result,
         ToolConfiguration config,
         bool missingScope,
         bool missingBody)
@@ -229,9 +229,7 @@ public sealed partial class HookCommand : ICommand
         StringWriter writer = new();
         IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
-            Out = new AnsiConsoleOutput(writer),
-            Ansi = AnsiSupport.Yes,
-            Interactive = InteractionSupport.Yes
+            Out = new AnsiConsoleOutput(writer), Ansi = AnsiSupport.Yes, Interactive = InteractionSupport.Yes
         });
         // A StringWriter reports no terminal width, so Spectre falls back to wrapping at 80
         // columns. These warnings must stay a single line, so the profile width is uncapped.
