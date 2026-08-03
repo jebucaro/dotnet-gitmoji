@@ -73,10 +73,10 @@ Create `Directory.Build.targets` at the repo root:
 </Project>
 ```
 
-This target runs `dotnet tool restore` and `dotnet husky install` automatically whenever a teammate restores or
-opens the project in Visual Studio or Rider. The `Inputs`/`Outputs` pair gives MSBuild incremental build support:
-the target re-runs only when `.config/dotnet-tools.json` changes (a tool version bump) or after `dotnet clean`.
-The stamp file it creates lives in `.husky/_/`, which is already gitignored by Husky.Net, so no `.gitignore`
+This target runs `dotnet tool restore` and `dotnet husky install` automatically whenever a teammate restores or opens
+the project in Visual Studio or Rider. The `Inputs`/`Outputs` pair gives MSBuild incremental build support:
+the target re-runs only when `.config/dotnet-tools.json` changes (a tool version bump) or after `dotnet clean`. The
+stamp file it creates lives in `.husky/_/`, which is already gitignored by Husky.Net, so no `.gitignore`
 entry is needed.
 
 > [!TIP]
@@ -108,8 +108,8 @@ dotnet restore
 
 Or simply open the project in Visual Studio or Rider. Both trigger the MSBuild target in `Directory.Build.targets`,
 which runs `dotnet tool restore` and `dotnet husky install` in sequence. `dotnet husky install` does two things:
-sets `core.hooksPath` to `.husky/` so git finds the committed hook, and creates the `.husky/_/` helper directory
-that the hook script sources at runtime.
+sets `core.hooksPath` to `.husky/` so git finds the committed hook, and creates the `.husky/_/` helper directory that
+the hook script sources at runtime.
 
 Your next `git commit` opens the gitmoji prompt.
 
@@ -149,8 +149,8 @@ git commit
 git commit -m "fix login redirect"   # message pre-filled as the title suggestion
 ```
 
-When you pass `-m`, the value is offered as a pre-filled title at the gitmoji prompt. The hook skips itself during
-merge commits, squash merges, amends, and interactive rebases so automated flows are not interrupted.
+When you pass `-m`, the value is offered as a pre-filled title at the gitmoji prompt. The hook skips itself during merge
+commits, squash merges, amends, and interactive rebases so automated flows are not interrupted.
 
 ### Client mode
 
@@ -181,9 +181,9 @@ dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth 
 dotnet tool run dotnet-gitmoji config
 ```
 
-Walks through every option and saves to `.gitmojirc.json` in the repo root (creating it if absent). Like the rest
-of the setup flow, the wizard runs inside a git repository. The final question, the color theme, is the exception
-to the shared file: it is a personal setting, not a team one, and is always saved to the global config
+Walks through every option and saves to `.gitmojirc.json` in the repo root (creating it if absent). Like the rest of the
+setup flow, the wizard runs inside a git repository. The final question, the color theme, is the exception to the shared
+file: it is a personal setting, not a team one, and is always saved to the global config
 (`~/.dotnet-gitmoji/config.json`).
 
 ### Manual configuration
@@ -236,15 +236,15 @@ Example file:
 ### Themes
 
 The theme selects the color palette used by the interactive picker, prompts, and command output. Because
-`.gitmojirc.json` is shared with your whole team, the theme is treated as a **personal setting** and is resolved
-from personal sources only, in this order:
+`.gitmojirc.json` is shared with your whole team, the theme is treated as a **personal setting** and is resolved from
+personal sources only, in this order:
 
 1. `DOTNET_GITMOJI_THEME` environment variable
 2. `theme` in your personal global config (`~/.dotnet-gitmoji/config.json`)
 3. Built-in `default`
 
-A `theme` key in a repo's `.gitmojirc.json` is ignored (with a note on stderr). The `config` wizard always saves
-your theme choice to the global config, which stores no other setting; everything else belongs in the repo's
+A `theme` key in a repo's `.gitmojirc.json` is ignored (with a note on stderr). The `config` wizard always saves your
+theme choice to the global config, which stores no other setting; everything else belongs in the repo's
 `.gitmojirc.json`.
 
 | Theme                                                           | Best on                                    |
@@ -257,8 +257,8 @@ your theme choice to the global config, which stores no other setting; everythin
 Themes set foreground colors only, so your terminal's background and transparency are always preserved. `default` uses
 named ANSI colors, so it adapts to whatever color scheme your terminal is configured with; the named themes use exact
 RGB values, which Spectre.Console automatically downgrades on terminals without truecolor support. The `NO_COLOR`
-environment variable is honored (all colors are stripped). An unknown theme name falls back to `default` with a
-warning on stderr.
+environment variable is honored (all colors are stripped). An unknown theme name falls back to `default` with a warning
+on stderr.
 
 ### Config resolution order
 
@@ -268,9 +268,9 @@ warning on stderr.
 | `~/.dotnet-gitmoji/config.json` | Personal theme preference (its only setting)   |
 | Built-in defaults               | Applied when the repo has no config file       |
 
-`dotnet-gitmoji` is a collaborative tool: the commit convention must be the same for every contributor, so all
-shared settings come from the repo's `.gitmojirc.json` (or the built-in defaults when it is absent). The global
-config holds only `theme`; any other keys found there are ignored with a note on stderr. Conversely, `theme`
+`dotnet-gitmoji` is a collaborative tool: the commit convention must be the same for every contributor, so all shared
+settings come from the repo's `.gitmojirc.json` (or the built-in defaults when it is absent). The global config holds
+only `theme`; any other keys found there are ignored with a note on stderr. Conversely, `theme`
 never comes from the repo config; it is always resolved from personal sources (see [Themes](#themes)).
 
 ---
@@ -301,8 +301,8 @@ dotnet tool run dotnet-gitmoji commit
 
 ### Global install
 
-Global install is convenient for personal use across repos. It does not share the tool with teammates; each
-teammate would need to install it globally themselves. For shared projects, use the local install path above.
+Global install is convenient for personal use across repos. It does not share the tool with teammates; each teammate
+would need to install it globally themselves. For shared projects, use the local install path above.
 
 ```sh
 dotnet tool install --global Husky
@@ -323,8 +323,8 @@ If your repo already uses Husky.Net's task runner, use `--mode task-runner` inst
 dotnet tool run dotnet-gitmoji init --mode task-runner
 ```
 
-Both modes produce the same prompt experience. Use shell mode unless you already have a `task-runner.json` with
-other tasks in it.
+Both modes produce the same prompt experience. Use shell mode unless you already have a `task-runner.json` with other
+tasks in it.
 
 ---
 

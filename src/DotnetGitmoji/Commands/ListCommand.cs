@@ -25,24 +25,26 @@ public sealed partial class ListCommand : ICommand
         ToolConfiguration config = await _configurationService.LoadAsync();
         ThemePalette theme = Themes.Resolve(config.Theme);
         IReadOnlyList<Gitmoji> gitmojis = await _gitmojiProvider.GetAllAsync();
+
+        // TableBorder.Simple has no vertical CellSeparator/HeaderSeparator characters.
+        // Roughly a quarter of the embedded gitmoji set are multi-codepoint (VS16/ZWJ)
+        // sequences that Spectre's width calculator measures differently than terminals
+        // render them; a boxed border style (Rounded/Square/Minimal/...) would turn that
+        // pre-existing misalignment into a visibly broken vertical line. Keep Simple.
         Table table = new Table()
             .Border(TableBorder.Simple)
-            .AddColumn("Emoji")
-            .AddColumn("Code")
-            .AddColumn("Description")
-            .AddColumn("Semver");
+            .BorderColor(theme.Border)
+            .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Emoji[/]"))
+            .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Code[/]"))
+            .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Description[/]"))
+            .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Semver[/]"));
 
         foreach (Gitmoji g in gitmojis)
         {
             table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description),
-                new Markup(FormatSemver(g.Semver, theme)));
+                new Markup(GitmojiTableFormatting.FormatSemver(g.Semver, theme)));
         }
 
         AnsiConsole.Write(table);
-    }
-
-    private static string FormatSemver(string? semver, ThemePalette theme)
-    {
-        return semver is null ? string.Empty : $"[{theme.AccentMarkup}]{semver}[/]";
     }
 }

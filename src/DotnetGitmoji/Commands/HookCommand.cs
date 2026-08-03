@@ -3,7 +3,9 @@ using CliFx.Binding;
 using CliFx.Infrastructure;
 using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
 using DotnetGitmoji.Validators;
+using Spectre.Console;
 
 namespace DotnetGitmoji.Commands;
 
@@ -70,7 +72,7 @@ public sealed partial class HookCommand : ICommand
         ToolConfiguration config = await _configService.LoadAsync();
         IReadOnlyList<Gitmoji> gitmojis = await _gitmojiProvider.GetAllAsync();
 
-        ValidationResult result = _validator.Validate(commitMessage, gitmojis);
+        Validators.ValidationResult result = _validator.Validate(commitMessage, gitmojis);
 
         if (result.IsValid)
         {
@@ -105,7 +107,7 @@ public sealed partial class HookCommand : ICommand
 
     private async Task HandleIncompleteMessageAsync(
         IConsole console,
-        ValidationResult result,
+        Validators.ValidationResult result,
         ToolConfiguration config,
         bool missingScope,
         bool missingBody)
@@ -185,16 +187,18 @@ public sealed partial class HookCommand : ICommand
 
         if (string.IsNullOrWhiteSpace(rawTitle))
         {
+            ThemePalette theme = Themes.Resolve(config.Theme);
             await console.Error.WriteLineAsync(
-                "⚠ dotnet-gitmoji: empty title, keeping original commit message.");
+                RenderWarning(theme, "empty title, keeping original commit message."));
             return;
         }
 
         string? titleValidationError = CommitTitlePolicy.ValidateExplicitTitle(rawTitle, config);
         if (titleValidationError is not null)
         {
+            ThemePalette theme = Themes.Resolve(config.Theme);
             await console.Error.WriteLineAsync(
-                $"⚠ dotnet-gitmoji: {titleValidationError} Keeping original commit message.");
+                RenderWarning(theme, $"{titleValidationError} Keeping original commit message."));
             return;
         }
 
@@ -213,6 +217,26 @@ public sealed partial class HookCommand : ICommand
         {
             await console.Error.WriteLineAsync(string.Format(WriteMessageErrorTemplate, ex.Message));
         }
+    }
+
+    internal static string BuildWarningMarkup(ThemePalette theme, string message)
+    {
+        return $"[{theme.WarningMarkup}]⚠[/] [{theme.MutedMarkup}]dotnet-gitmoji:[/] {message}";
+    }
+
+    private static string RenderWarning(ThemePalette theme, string message)
+    {
+        StringWriter writer = new();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Out = new AnsiConsoleOutput(writer), Ansi = AnsiSupport.Yes, Interactive = InteractionSupport.Yes
+        });
+        // A StringWriter reports no terminal width, so Spectre falls back to wrapping at 80
+        // columns. These warnings must stay a single line, so the profile width is uncapped.
+        console.Profile.Width = int.MaxValue;
+
+        console.Markup(BuildWarningMarkup(theme, message));
+        return writer.ToString();
     }
 
     private static string BuildMissingPartsList(bool missingScope, bool missingBody)

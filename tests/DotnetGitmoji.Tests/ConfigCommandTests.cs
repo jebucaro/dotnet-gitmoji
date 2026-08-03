@@ -8,6 +8,7 @@ using Spectre.Console;
 
 namespace DotnetGitmoji.Tests;
 
+[Collection(SpectreConsoleCollection.Name)]
 public class ConfigCommandTests
 {
     private const string PositiveIntegerErrorFragment = "positive integer";

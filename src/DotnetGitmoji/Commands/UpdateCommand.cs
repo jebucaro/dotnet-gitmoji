@@ -1,7 +1,10 @@
 using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
+using DotnetGitmoji.Models;
 using DotnetGitmoji.Services;
+using DotnetGitmoji.Theming;
+using Spectre.Console;
 
 namespace DotnetGitmoji.Commands;
 
@@ -9,15 +12,23 @@ namespace DotnetGitmoji.Commands;
 public sealed partial class UpdateCommand : ICommand
 {
     private readonly IGitmojiProvider _gitmojiProvider;
+    private readonly IConfigurationService _configurationService;
 
-    public UpdateCommand(IGitmojiProvider gitmojiProvider)
+    public UpdateCommand(IGitmojiProvider gitmojiProvider, IConfigurationService configurationService)
     {
         _gitmojiProvider = gitmojiProvider;
+        _configurationService = configurationService;
     }
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        await _gitmojiProvider.ForceRefreshAsync();
-        await console.Output.WriteLineAsync("Gitmoji list updated successfully! ✅");
+        ToolConfiguration config = await _configurationService.LoadAsync();
+        ThemePalette theme = Themes.Resolve(config.Theme);
+
+        await AnsiConsole.Status()
+            .StartAsync("Fetching latest gitmojis...",
+                async _ => { await _gitmojiProvider.ForceRefreshAsync(); });
+
+        AnsiConsole.MarkupLine($"[{theme.SuccessMarkup}]✓[/] Gitmoji list updated successfully.");
     }
 }

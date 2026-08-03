@@ -10,3 +10,5 @@ nupkg/
 .sonarqube/
 tests/**/coverage.opencover.xml
 tests/**/coverage/
+docs/superpowers/
+.superpowers/
