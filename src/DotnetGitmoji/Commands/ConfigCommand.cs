@@ -90,11 +90,16 @@ public sealed partial class ConfigCommand : ICommand
 
         WriteSection(theme, "Theme",
             "Personal preference, saved to your global config, never to the team's .gitmojirc.json");
-        string selectedTheme = await AnsiConsole.PromptAsync(
-            new SelectionPrompt<string>()
-                .Title("Select color theme:")
-                .PageSize(Themes.Names.Count + 1)
-                .AddChoices(Themes.Names));
+        SelectionPrompt<string> themePrompt = new SelectionPrompt<string>()
+            .Title("Select color theme:")
+            .PageSize(Themes.Names.Count + 1)
+            .AddChoices(Themes.Names);
+        if (config.Theme is not null)
+        {
+            themePrompt.DefaultValue(config.Theme);
+        }
+
+        string selectedTheme = await AnsiConsole.PromptAsync(themePrompt);
         AnsiConsole.MarkupLine(
             $"Theme: {Markup.Escape(selectedTheme)} (personal setting, saved to the global config)");
 
