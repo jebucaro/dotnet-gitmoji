@@ -54,7 +54,8 @@ public sealed partial class ConfigCommand : ICommand
                 .Title("Select emoji format:")
                 .PageSize(5)
                 .UseConverter(FormatEmojiChoice)
-                .AddChoices(EmojiFormat.Emoji, EmojiFormat.Code));
+                .AddChoices(EmojiFormat.Emoji, EmojiFormat.Code)
+                .DefaultValue(config.EmojiFormat));
         AnsiConsole.MarkupLine($"Emoji format: {Markup.Escape(FormatEmojiChoice(emojiFormat))}");
         bool normalizeCommitFormat = await AnsiConsole.ConfirmAsync(
             "Normalize commit format to 'emoji: title' (adds ': ' even without scope)?",
@@ -137,20 +138,27 @@ public sealed partial class ConfigCommand : ICommand
             $"[{theme.SuccessMarkup}]✔[/] Configuration saved to [{theme.MutedMarkup}].gitmojirc.json[/]");
     }
 
+    internal const int RecommendedMaxTitleLength = 72;
+
     private static async Task<(int? MaxTitleLength, bool TrimTitleWhenExceeded)> PromptMaxTitleLengthAsync(
         ToolConfiguration config, ThemePalette theme)
     {
-        string hint = config.MaxTitleLength is not null
-            ? $"current: {config.MaxTitleLength.Value}, "
-            : string.Empty;
-        string input = await AnsiConsole.PromptAsync(
-            new TextPrompt<string>($"Maximum commit title length ({hint}leave empty to disable):")
-                .AllowEmpty()
-                .Validate(value => ValidateMaxTitleLengthInput(value, theme)));
+        bool limitTitleLength = await AnsiConsole.ConfirmAsync(
+            "Limit maximum commit title length?", config.MaxTitleLength is not null);
 
-        int? maxTitleLength = string.IsNullOrWhiteSpace(input)
-            ? null
-            : int.Parse(input, NumberStyles.None, CultureInfo.InvariantCulture);
+        int? maxTitleLength = null;
+        if (limitTitleLength)
+        {
+            string hint = config.MaxTitleLength is not null
+                ? $"current: {config.MaxTitleLength.Value}"
+                : $"recommended: {RecommendedMaxTitleLength}";
+            int suggestedLength = config.MaxTitleLength ?? RecommendedMaxTitleLength;
+            string input = await AnsiConsole.PromptAsync(
+                new TextPrompt<string>($"Maximum commit title length ({hint}):")
+                    .DefaultValue(suggestedLength.ToString(CultureInfo.InvariantCulture))
+                    .Validate(value => ValidateMaxTitleLengthInput(value, theme)));
+            maxTitleLength = int.Parse(input, NumberStyles.None, CultureInfo.InvariantCulture);
+        }
 
         bool trim = false;
         if (maxTitleLength is not null)
