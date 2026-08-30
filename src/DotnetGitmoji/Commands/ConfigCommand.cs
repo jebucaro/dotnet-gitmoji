@@ -150,7 +150,7 @@ public sealed partial class ConfigCommand : ICommand
         if (limitTitleLength)
         {
             string hint = config.MaxTitleLength is not null
-                ? $"current: {config.MaxTitleLength.Value}"
+                ? $"current: {config.MaxTitleLength.Value}, recommended: {RecommendedMaxTitleLength}"
                 : $"recommended: {RecommendedMaxTitleLength}";
             int suggestedLength = config.MaxTitleLength ?? RecommendedMaxTitleLength;
             string input = await AnsiConsole.PromptAsync(
