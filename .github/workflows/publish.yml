@@ -32,7 +32,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore --nologo
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --nologo
+        run: dotnet test --configuration Release --no-build --no-banner
 
       - name: Pack
         id: pack
