@@ -47,7 +47,8 @@ public sealed partial class SearchCommand : ICommand
         Table table = new Table()
             .Border(TableBorder.Simple)
             .BorderColor(theme.Border)
-            .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Emoji[/]"))
+            .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Emoji[/]")
+                .Width(GitmojiTableFormatting.EmojiColumnWidth).NoWrap())
             .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Code[/]"))
             .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Description[/]"))
             .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Semver[/]"));
@@ -55,7 +56,7 @@ public sealed partial class SearchCommand : ICommand
         foreach (Gitmoji g in results)
         {
             table.AddRow(
-                new Text(g.Emoji),
+                new Text(GitmojiTableFormatting.NormalizeEmojiForDisplay(g.Emoji)),
                 new Markup(HighlightKeyword(g.Code, Keyword, theme)),
                 new Markup(HighlightKeyword(g.Description, Keyword, theme)),
                 new Markup(GitmojiTableFormatting.FormatSemver(g.Semver, theme)));
