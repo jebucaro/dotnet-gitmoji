@@ -44,4 +44,21 @@ public class ListCommandTests
 
         await _gitmojiProvider.Received(1).GetAllAsync();
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenGitmojiHasVariationSelector_RendersWithoutThrowing()
+    {
+        // :arrow_down: ships as U+2B07 + VS16, the sequence that drifted the column across terminals.
+        _gitmojiProvider.GetAllAsync().Returns(new[]
+        {
+            new Gitmoji("\u2b07\uFE0F", "entity", ":arrow_down:", "Downgrade dependencies", "arrow_down", "patch"),
+            new Gitmoji("\U0001F9D1\u200D\U0001F4BB", "entity", ":technologist:", "Improve DX", "technologist", null)
+        });
+        ListCommand command = CreateCommand();
+        FakeInMemoryConsole console = new();
+
+        await command.ExecuteAsync(console);
+
+        await _gitmojiProvider.Received(1).GetAllAsync();
+    }
 }

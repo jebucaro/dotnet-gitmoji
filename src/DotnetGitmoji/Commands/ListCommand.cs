@@ -34,14 +34,16 @@ public sealed partial class ListCommand : ICommand
         Table table = new Table()
             .Border(TableBorder.Simple)
             .BorderColor(theme.Border)
-            .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Emoji[/]"))
+            .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Emoji[/]")
+                .Width(GitmojiTableFormatting.EmojiColumnWidth).NoWrap())
             .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Code[/]"))
             .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Description[/]"))
             .AddColumn(new TableColumn($"[bold {theme.BorderMarkup}]Semver[/]"));
 
         foreach (Gitmoji g in gitmojis)
         {
-            table.AddRow(new Text(g.Emoji), new Text(g.Code), new Text(g.Description),
+            table.AddRow(new Text(GitmojiTableFormatting.NormalizeEmojiForDisplay(g.Emoji)),
+                new Text(g.Code), new Text(g.Description),
                 new Markup(GitmojiTableFormatting.FormatSemver(g.Semver, theme)));
         }
 

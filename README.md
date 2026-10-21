@@ -16,6 +16,11 @@ their first commit.
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) or later
 - [Git for Windows](https://git-scm.com/download/win) (Windows only; the hook runs under Git Bash)
 
+> [!NOTE]
+> Emojis in `list` and `search` render in color only when your terminal has a color-emoji font
+> in its fallback chain. Terminals like Alacritty that lack one show monochrome glyphs instead.
+> That is a local font setting, not a tool issue, and the columns stay aligned either way.
+
 ---
 
 ## First-developer setup
