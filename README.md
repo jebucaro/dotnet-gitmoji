@@ -30,12 +30,13 @@ Run these steps once in your repo. After you commit the generated files, every t
 **Step 1: Add both tools to the local tool manifest**
 
 ```sh
-dotnet new tool-manifest   # skip if .config/dotnet-tools.json already exists
+dotnet new tool-manifest   # skip if the repo already has a dotnet-tools.json
 dotnet tool install Husky
 dotnet tool install dotnet-gitmoji
 ```
 
-This creates `.config/dotnet-tools.json`, which pins both tool versions for the whole team.
+This creates `dotnet-tools.json` at the repo root, which pins both tool versions for the whole team. (SDKs before
+.NET 10 created it as `.config/dotnet-tools.json`; both locations work with the steps below.)
 
 **Step 2: Initialize Husky.Net**
 
@@ -61,9 +62,11 @@ Create `Directory.Build.targets` at the repo root:
 <Project>
   <PropertyGroup>
     <HuskyRoot Condition="'$(HuskyRoot)' == ''">$(MSBuildThisFileDirectory)</HuskyRoot>
+    <HuskyToolManifest Condition="'$(HuskyToolManifest)' == '' and Exists('$(HuskyRoot)dotnet-tools.json')">$(HuskyRoot)dotnet-tools.json</HuskyToolManifest>
+    <HuskyToolManifest Condition="'$(HuskyToolManifest)' == ''">$(HuskyRoot).config/dotnet-tools.json</HuskyToolManifest>
   </PropertyGroup>
-  <Target Name="Husky" AfterTargets="Restore" Condition="'$(HUSKY)' != 0"
-          Inputs="$(HuskyRoot).config/dotnet-tools.json"
+  <Target Name="Husky" BeforeTargets="Restore;CollectPackageReferences" Condition="'$(HUSKY)' != 0"
+          Inputs="$(HuskyToolManifest)"
           Outputs="$(HuskyRoot).husky/_/install.stamp">
     <Exec Command="dotnet tool restore"
           StandardOutputImportance="Low" StandardErrorImportance="High" />
@@ -79,16 +82,29 @@ Create `Directory.Build.targets` at the repo root:
 </Project>
 ```
 
-This target runs `dotnet tool restore` and `dotnet husky install` automatically whenever a teammate restores or opens
-the project in Visual Studio or Rider. The `Inputs`/`Outputs` pair gives MSBuild incremental build support:
-the target re-runs only when `.config/dotnet-tools.json` changes (a tool version bump) or after `dotnet clean`. The
-stamp file it creates lives in `.husky/_/`, which is already gitignored by Husky.Net, so no `.gitignore`
-entry is needed.
+This target runs `dotnet tool restore` and `dotnet husky install` automatically whenever a teammate restores, builds,
+or opens the project in Visual Studio or Rider. The `Inputs`/`Outputs` pair gives MSBuild incremental build support:
+the target re-runs only when `dotnet-tools.json` changes (a tool version bump) or after `dotnet clean`. The stamp file
+it creates lives in `.husky/_/`, which is already gitignored by Husky.Net, so no `.gitignore` entry is needed.
 
-> [!TIP]
-> If your repo has a single `.csproj`, you can skip creating `Directory.Build.targets` manually. Run
-> `dotnet tool run husky attach <path-to.csproj>` instead. Husky.Net adds the same target directly to your
-> project file.
+The target hooks `BeforeTargets="Restore;CollectPackageReferences"` rather than `AfterTargets="Restore"` on purpose.
+When you restore a solution (`.sln` or `.slnx`), which is what a plain `dotnet restore` does at a repo root that has
+one, NuGet restores every project from the solution level and never runs each project's own `Restore` target, so an
+`AfterTargets="Restore"` hook silently never fires. `CollectPackageReferences` runs for every project during both
+restore and build, so the hook fires either way.
+
+> [!WARNING]
+> Don't use `dotnet tool run husky attach <path-to.csproj>` as a shortcut for this step. Husky.Net 0.9.1 writes an
+> `AfterTargets="Restore"` target into the project file, which does not fire on a solution-level `dotnet restore`
+> (see above), and it hardcodes `.config/dotnet-tools.json` as the input, which .NET 10 no longer creates.
+
+> [!NOTE]
+> Private NuGet feeds that authenticate through a NuGet credential helper: because this target runs before `Restore`,
+> `dotnet tool restore` can run before the credential helper has signed in and fail, which fails the restore. If that
+> happens, affected developers set the `HUSKY` environment variable to `0` (as in CI) and run `dotnet tool restore`
+> and `dotnet tool run husky install` once by hand after cloning. Husky.Net switched its own
+> target to `AfterTargets="Restore"` to fix this, which broke solution restores instead; the trade-off is tracked in
+> [Husky.Net #176](https://github.com/alirezanet/Husky.Net/issues/176).
 
 > [!NOTE]
 > Set the `HUSKY` environment variable to `0` in your CI environment to skip hook installation in pipelines.
@@ -96,7 +112,7 @@ entry is needed.
 **Step 5: Commit everything**
 
 ```sh
-git add .config/dotnet-tools.json .husky/ Directory.Build.targets
+git add dotnet-tools.json .husky/ Directory.Build.targets   # or .config/dotnet-tools.json on older SDKs
 git commit -m "chore: add dotnet-gitmoji hook"
 ```
 
@@ -317,8 +333,27 @@ husky install
 dotnet-gitmoji init --mode shell
 ```
 
-Then add `Directory.Build.targets` (same content as the local variant) and commit `.husky/` and
-`Directory.Build.targets`. Note that `.config/dotnet-tools.json` is not involved for global installs.
+Then add a `Directory.Build.targets` at the repo root and commit it together with `.husky/`. The local variant's
+target doesn't work here: there is no tool manifest to restore, and a global Husky.Net is invoked as `husky`, not
+`dotnet husky`. Use this instead:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <HuskyRoot Condition="'$(HuskyRoot)' == ''">$(MSBuildThisFileDirectory)</HuskyRoot>
+  </PropertyGroup>
+  <Target Name="Husky" BeforeTargets="Restore;CollectPackageReferences"
+          Condition="'$(HUSKY)' != 0 and !Exists('$(HuskyRoot).husky/_/install.stamp')">
+    <Exec Command="husky install"
+          StandardOutputImportance="Low" StandardErrorImportance="High"
+          WorkingDirectory="$(HuskyRoot)" />
+    <Touch Files="$(HuskyRoot).husky/_/install.stamp" AlwaysCreate="true"
+           Condition="Exists('$(HuskyRoot).husky/_')" />
+  </Target>
+</Project>
+```
+
+Every teammate must also install both tools globally, or their restore fails when it runs `husky install`.
 
 ### Task-runner mode
 
