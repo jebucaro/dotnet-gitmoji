@@ -1,9 +1,11 @@
 <Project>
     <PropertyGroup>
         <HuskyRoot Condition="'$(HuskyRoot)' == ''">$(MSBuildThisFileDirectory)</HuskyRoot>
+        <HuskyToolManifest Condition="'$(HuskyToolManifest)' == '' and Exists('$(HuskyRoot)dotnet-tools.json')">$(HuskyRoot)dotnet-tools.json</HuskyToolManifest>
+        <HuskyToolManifest Condition="'$(HuskyToolManifest)' == ''">$(HuskyRoot).config/dotnet-tools.json</HuskyToolManifest>
     </PropertyGroup>
-    <Target Name="Husky" AfterTargets="Restore" Condition="'$(HUSKY)' != 0"
-            Inputs="$(HuskyRoot)dotnet-tools.json"
+    <Target Name="Husky" BeforeTargets="Restore;CollectPackageReferences" Condition="'$(HUSKY)' != 0"
+            Inputs="$(HuskyToolManifest)"
             Outputs="$(HuskyRoot).husky/_/install.stamp">
         <Exec Command="dotnet tool restore"
               StandardOutputImportance="Low" StandardErrorImportance="High"/>
