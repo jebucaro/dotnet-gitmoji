@@ -62,7 +62,8 @@ a:hover { color: var(--ink); }
 
 .mono, code, pre { font-family: var(--mono); }
 code { font-size: .92em; }
-p code, li code, td code { color: var(--term-fg); background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: .05em .35em; }
+:not(pre) > code { color: var(--term-fg); background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: .05em .35em; }
+td code { white-space: nowrap; }
 
 .wrap { width: 100%; max-width: var(--max); margin-inline: auto; padding-inline: var(--gutter); }
 
@@ -196,3 +197,18 @@ th { color: var(--mute); font-weight: 600; }
 .credits li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
 .credits li > a { font-weight: 600; }
 .credits span { color: var(--mute); }
+
+/* long identifiers (package names, paths) wrap instead of widening the page on phones */
+.credits li, .keys dd, p > code { overflow-wrap: anywhere; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.video-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+
+.log { white-space: normal; }
+.log > span { white-space: pre; }
+.emoji { font-family: var(--emoji); font-style: normal; }
+
+@media (max-width: 560px) {
+  .code pre { padding: 46px 16px 14px; }
+  .site-header ul { font-size: 14px; gap: 2px 14px; }
+}
