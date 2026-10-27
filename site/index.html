@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dotnet-gitmoji: gitmoji commits for .NET</title>
+  <meta name="description" content="dotnet-gitmoji brings the gitmoji commit convention to .NET projects. It installs a prepare-commit-msg hook through Husky.Net so the hook travels with the repo.">
+  <meta name="theme-color" content="#17191D">
+  <link rel="canonical" href="https://dotnet-gitmoji.com/">
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://dotnet-gitmoji.com/">
+  <meta property="og:title" content="dotnet-gitmoji: clean git history, from your next commit">
+  <meta property="og:description" content="The gitmoji commit convention for .NET teams. One hook, shared through the repo; teammates just run dotnet restore.">
+  <meta property="og:image" content="https://dotnet-gitmoji.com/img/og.png">
+  <meta property="og:image:width" content="1920">
+  <meta property="og:image:height" content="1080">
+  <meta property="og:image:alt" content="A git log of gitmoji commits: Document auth endpoints, Extract auth service, Add password reset endpoint, Fix login redirect.">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="preload" href="fonts/InterVariable-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#setup">Skip to setup</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="#top" aria-label="dotnet-gitmoji home">
+        <img src="img/bug.png" alt="" width="28" height="28">
+        <span class="mono">dotnet-gitmoji</span>
+      </a>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="#setup">Setup</a></li>
+          <li><a href="#usage">Usage</a></li>
+          <li><a href="#configuration">Configuration</a></li>
+          <li><a href="https://github.com/jebucaro/dotnet-gitmoji">GitHub</a></li>
+          <li><a href="https://www.nuget.org/packages/dotnet-gitmoji">NuGet</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <p class="eyebrow"><span class="mono">dotnet-gitmoji</span> <img src="img/bug.png" alt="" width="40" height="40"> <span class="pill">for .NET</span></p>
+      <h1 id="hero-title">Clean git history,<br> from your <em>next commit</em></h1>
+      <p class="lede">dotnet-gitmoji brings the <a href="https://gitmoji.dev">gitmoji</a> commit convention to .NET projects.
+        It installs a <code>prepare-commit-msg</code> hook through Husky.Net, so the hook travels with the repo and is ready on
+        every teammate's first commit.</p>
+      <div class="code hero-cmd" data-copy><pre><code><span class="prompt" aria-hidden="true">❯ </span>dotnet tool install dotnet-gitmoji</code></pre><button type="button" class="copy" aria-label="Copy command">Copy</button></div>
+      <p class="cue"><a href="#setup">then 4 quick steps to wire the hook →</a></p>
+      <p class="actions">
+        <a class="btn btn-primary" href="#setup">Get started</a>
+        <a class="btn btn-secondary" href="https://github.com/jebucaro/dotnet-gitmoji">GitHub</a>
+      </p>
+    </section>
+
+    <section id="video" class="wrap" aria-label="Demo video">
+    </section>
+
+    <section id="before-after" class="wrap" aria-labelledby="before-after-title">
+      <h2 id="before-after-title">Before and <em>after</em></h2>
+    </section>
+
+    <section id="setup" class="wrap" aria-labelledby="setup-title">
+      <h2 id="setup-title">Set it up <em>once</em></h2>
+    </section>
+
+    <section id="joining" class="wrap" aria-labelledby="joining-title">
+      <h2 id="joining-title">Joining a repo? <em>Just restore</em></h2>
+    </section>
+
+    <section id="usage" class="wrap" aria-labelledby="usage-title">
+      <h2 id="usage-title">Commit like <em>always</em></h2>
+    </section>
+
+    <section id="configuration" class="wrap" aria-labelledby="configuration-title">
+      <h2 id="configuration-title">Make it <em>yours</em></h2>
+    </section>
+
+    <section id="credits" class="wrap" aria-labelledby="credits-title">
+      <h2 id="credits-title">Credits</h2>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <p>Built by <a href="https://jonathanbucaro.com">Jonathan Búcaro</a></p>
+      <ul>
+        <li><a href="https://github.com/jebucaro/dotnet-gitmoji">GitHub</a></li>
+        <li><a href="https://www.nuget.org/packages/dotnet-gitmoji">NuGet</a></li>
+        <li><a href="https://github.com/jebucaro/dotnet-gitmoji/blob/main/LICENSE">MIT license</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
