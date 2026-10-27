@@ -24,6 +24,7 @@
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>bug_3d.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
@@ -46,6 +47,7 @@
 
     <ItemGroup>
         <None Include="../../README.md" Pack="true" PackagePath="\"/>
+        <None Include="../../assets/bug_3d.png" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>

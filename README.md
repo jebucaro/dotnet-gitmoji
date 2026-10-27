@@ -322,3 +322,7 @@ tasks in it.
 ## License
 
 MIT, [Jonathan Búcaro](https://github.com/jebucaro)
+
+The package icon (`assets/bug_3d.png`) is the 🐛 bug emoji from
+[Fluent Emoji](https://github.com/microsoft/fluentui-emoji), Copyright (c) Microsoft Corporation, used under the
+[MIT License](https://github.com/microsoft/fluentui-emoji/blob/main/LICENSE).
