@@ -82,32 +82,27 @@ Create `Directory.Build.targets` at the repo root:
 </Project>
 ```
 
-This target runs `dotnet tool restore` and `dotnet husky install` automatically whenever a teammate restores, builds,
-or opens the project in Visual Studio or Rider. The `Inputs`/`Outputs` pair gives MSBuild incremental build support:
-the target re-runs only when `dotnet-tools.json` changes (a tool version bump) or after `dotnet clean`. The stamp file
-it creates lives in `.husky/_/`, which is already gitignored by Husky.Net, so no `.gitignore` entry is needed.
-
-The target hooks `BeforeTargets="Restore;CollectPackageReferences"` rather than `AfterTargets="Restore"` on purpose.
-When you restore a solution (`.sln` or `.slnx`), which is what a plain `dotnet restore` does at a repo root that has
-one, NuGet restores every project from the solution level and never runs each project's own `Restore` target, so an
-`AfterTargets="Restore"` hook silently never fires. `CollectPackageReferences` runs for every project during both
-restore and build, so the hook fires either way.
+This target runs `dotnet tool restore` and `dotnet husky install` whenever a teammate restores, builds, or opens the
+project in Visual Studio or Rider. It re-runs only when `dotnet-tools.json` changes or after `dotnet clean`; its stamp
+file lives in the already-gitignored `.husky/_/`. Set `HUSKY=0` in CI to skip it.
 
 > [!WARNING]
-> Don't use `dotnet tool run husky attach <path-to.csproj>` as a shortcut for this step. Husky.Net 0.9.1 writes an
-> `AfterTargets="Restore"` target into the project file, which does not fire on a solution-level `dotnet restore`
-> (see above), and it hardcodes `.config/dotnet-tools.json` as the input, which .NET 10 no longer creates.
+> Don't use `dotnet tool run husky attach <path-to.csproj>` instead. Husky.Net 0.9.1 writes a target that does not
+> fire on a solution-level `dotnet restore` and hardcodes `.config/dotnet-tools.json`, which .NET 10 no longer creates.
 
-> [!NOTE]
-> Private NuGet feeds that authenticate through a NuGet credential helper: because this target runs before `Restore`,
-> `dotnet tool restore` can run before the credential helper has signed in and fail, which fails the restore. If that
-> happens, affected developers set the `HUSKY` environment variable to `0` (as in CI) and run `dotnet tool restore`
-> and `dotnet tool run husky install` once by hand after cloning. Husky.Net switched its own
-> target to `AfterTargets="Restore"` to fix this, which broke solution restores instead; the trade-off is tracked in
-> [Husky.Net #176](https://github.com/alirezanet/Husky.Net/issues/176).
+<details>
+<summary>Why <code>BeforeTargets</code>, and a caveat for private feeds</summary>
 
-> [!NOTE]
-> Set the `HUSKY` environment variable to `0` in your CI environment to skip hook installation in pipelines.
+When you restore a solution (`.sln` or `.slnx`), NuGet restores every project from the solution level and never runs
+each project's own `Restore` target, so an `AfterTargets="Restore"` hook silently never fires.
+`CollectPackageReferences` runs for every project during both restore and build, so the hook fires either way.
+
+The trade-off: on private NuGet feeds that authenticate through a credential helper, `dotnet tool restore` can run
+before the helper has signed in and fail the restore. If that happens, affected developers set `HUSKY=0` and run
+`dotnet tool restore` and `dotnet tool run husky install` once by hand after cloning. See
+[Husky.Net #176](https://github.com/alirezanet/Husky.Net/issues/176).
+
+</details>
 
 **Step 5: Commit everything**
 
@@ -128,20 +123,14 @@ If the repo already has dotnet-gitmoji set up (it has a `.husky/` directory and 
 dotnet restore
 ```
 
-Or simply open the project in Visual Studio or Rider. Both trigger the MSBuild target in `Directory.Build.targets`,
-which runs `dotnet tool restore` and `dotnet husky install` in sequence. `dotnet husky install` does two things:
-sets `core.hooksPath` to `.husky/` so git finds the committed hook, and creates the `.husky/_/` helper directory that
-the hook script sources at runtime.
-
-Your next `git commit` opens the gitmoji prompt.
+Or open the project in Visual Studio or Rider. Either one triggers the MSBuild target, which restores the tools and
+runs `dotnet husky install` to point `core.hooksPath` at `.husky/`. Your next `git commit` opens the gitmoji prompt.
 
 > [!IMPORTANT]
-> You must run `dotnet restore` (NuGet package restore) before your first commit, not `dotnet tool restore`.
-> `dotnet tool restore` only installs .NET tools and does not trigger MSBuild. Without MSBuild running
-> `dotnet husky install`, `core.hooksPath` is never set, git looks in `.git/hooks/` instead of `.husky/`,
-> and the gitmoji prompt silently does not appear.
+> Use `dotnet restore`, not `dotnet tool restore`. The latter only installs tools and never runs MSBuild, so
+> `core.hooksPath` is never set and the gitmoji prompt silently does not appear.
 
-If the repo has no project file (no `.csproj`) to trigger NuGet restore, run the two steps manually instead:
+If the repo has no project file to trigger a restore, run the two steps manually instead:
 
 ```sh
 dotnet tool restore
@@ -203,38 +192,18 @@ dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth 
 dotnet tool run dotnet-gitmoji config
 ```
 
-Walks through every option and saves to `.gitmojirc.json` in the repo root (creating it if absent). Like the rest of the
-setup flow, the wizard runs inside a git repository. The final question, the color theme, is the exception to the shared
-file: it is a personal setting, not a team one, and is always saved to the global config
-(`~/.dotnet-gitmoji/config.json`).
+Walks through every option and saves to `.gitmojirc.json` in the repo root (creating it if absent). The final
+question, the color theme, is saved to your personal global config instead (see [Themes](#themes)).
 
 ### Manual configuration
 
-Create `.gitmojirc.json` in your repo root, or generate one with defaults:
+Create `.gitmojirc.json` in your repo root by hand, or generate one with every default filled in:
 
 ```sh
 dotnet tool run dotnet-gitmoji init --mode shell --config
 ```
 
-Example file:
-
-```json
-{
-  "emojiFormat": "Emoji",
-  "scopePrompt": false,
-  "messagePrompt": false,
-  "capitalizeTitle": true,
-  "maxTitleLength": 48,
-  "trimTitleWhenExceeded": true,
-  "gitmojisUrl": "https://gitmoji.dev/api/gitmojis",
-  "autoAdd": false,
-  "signedCommit": false,
-  "scopes": null,
-  "enforceConvention": false,
-  "showSemverBadge": true,
-  "normalizeCommitFormat": false
-}
-```
+Commit it so every contributor uses the same convention. When the file is absent, the built-in defaults apply.
 
 ### Configuration reference
 
@@ -253,7 +222,7 @@ Example file:
 | `enforceConvention`     | `bool`                | `false`                            | Reject commits that don't start with a gitmoji when no interactive terminal is available (e.g. IDE commits)     |
 | `showSemverBadge`       | `bool`                | `true`                             | Show the semver badge next to each gitmoji in the interactive picker, list, and search results                  |
 | `normalizeCommitFormat` | `bool`                | `false`                            | Produce `emoji: title` (with colon) instead of `emoji title`, aligning with the conventional commit format      |
-| `theme`                 | `string`              | `"default"`                        | Color theme for all tool output, a **personal setting stored only in the global config**; see [Themes](#themes) |
+| `theme`                 | `string`              | `"default"`                        | Color theme for all tool output; **personal setting, not read from this file**, see [Themes](#themes)           |
 
 ### Themes
 
@@ -265,9 +234,8 @@ personal sources only, in this order:
 2. `theme` in your personal global config (`~/.dotnet-gitmoji/config.json`)
 3. Built-in `default`
 
-A `theme` key in a repo's `.gitmojirc.json` is ignored (with a note on stderr). The `config` wizard always saves your
-theme choice to the global config, which stores no other setting; everything else belongs in the repo's
-`.gitmojirc.json`.
+A `theme` key in a repo's `.gitmojirc.json` is ignored, and any key other than `theme` in the global config is ignored;
+both cases print a note on stderr.
 
 | Theme                                                           | Best on                                    |
 |-----------------------------------------------------------------|--------------------------------------------|
@@ -281,19 +249,6 @@ named ANSI colors, so it adapts to whatever color scheme your terminal is config
 RGB values, which Spectre.Console automatically downgrades on terminals without truecolor support. The `NO_COLOR`
 environment variable is honored (all colors are stripped). An unknown theme name falls back to `default` with a warning
 on stderr.
-
-### Config resolution order
-
-| Location                        | Purpose                                        |
-|---------------------------------|------------------------------------------------|
-| `.gitmojirc.json` in repo root  | Shared team settings; commit this to your repo |
-| `~/.dotnet-gitmoji/config.json` | Personal theme preference (its only setting)   |
-| Built-in defaults               | Applied when the repo has no config file       |
-
-`dotnet-gitmoji` is a collaborative tool: the commit convention must be the same for every contributor, so all shared
-settings come from the repo's `.gitmojirc.json` (or the built-in defaults when it is absent). The global config holds
-only `theme`; any other keys found there are ignored with a note on stderr. Conversely, `theme`
-never comes from the repo config; it is always resolved from personal sources (see [Themes](#themes)).
 
 ---
 
@@ -310,12 +265,7 @@ never comes from the repo config; it is always resolved from personal sources (s
 | `dotnet-gitmoji search <keyword>`        | Fuzzy-search gitmojis by name, code, or description                                               |
 | `dotnet-gitmoji update`                  | Refresh the cached gitmoji list from the remote API                                               |
 
-When installed locally, prefix every command with `dotnet tool run`:
-
-```sh
-dotnet tool run dotnet-gitmoji init --mode shell
-dotnet tool run dotnet-gitmoji commit
-```
+For a local install, prefix each command with `dotnet tool run`.
 
 ---
 
