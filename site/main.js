@@ -69,6 +69,29 @@ function initTargets() {
   document.querySelectorAll("details.targets").forEach((d) => d.removeAttribute("open"));
 }
 
+function initMenu() {
+  const header = document.querySelector(".site-header");
+  const button = header?.querySelector(".menu-toggle");
+  if (!button) return;
+
+  const setOpen = (open) => {
+    header.classList.toggle("nav-open", open);
+    button.setAttribute("aria-expanded", String(open));
+  };
+
+  header.classList.add("has-menu");
+  button.hidden = false;
+  button.addEventListener("click", () => setOpen(button.getAttribute("aria-expanded") !== "true"));
+  header.querySelectorAll("nav a").forEach((a) => a.addEventListener("click", () => setOpen(false)));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && header.classList.contains("nav-open")) {
+      setOpen(false);
+      button.focus();
+    }
+  });
+}
+
 initCopy();
 initVideo();
 initTargets();
+initMenu();

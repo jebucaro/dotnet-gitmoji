@@ -220,3 +220,36 @@ th { color: var(--mute); font-weight: 600; }
 .keys dt { margin-top: 12px; }
 .keys dt code { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 700; }
 .keys dd { font-size: 15px; line-height: 1.5; }
+
+/* mobile menu: only when JS is on (.has-menu); without JS the links just wrap */
+.menu-toggle { display: none; }
+@media (max-width: 640px) {
+  .has-menu .header-row { flex-wrap: nowrap; }
+  .has-menu .menu-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; margin-right: -10px;
+    background: none; border: 0; border-radius: 8px; cursor: pointer; color: var(--ink);
+  }
+  .menu-bars, .menu-bars::before, .menu-bars::after {
+    display: block; width: 22px; height: 2px; border-radius: 2px; background: currentColor; position: relative;
+  }
+  .menu-bars::before, .menu-bars::after { content: ""; position: absolute; left: 0; }
+  .menu-bars::before { top: -7px; }
+  .menu-bars::after { top: 7px; }
+  .nav-open .menu-bars { background: transparent; }
+  .nav-open .menu-bars::before { top: 0; transform: rotate(45deg); }
+  .nav-open .menu-bars::after { top: 0; transform: rotate(-45deg); }
+
+  .has-menu nav ul { display: none; }
+  .has-menu.nav-open nav ul {
+    display: flex; flex-direction: column; gap: 0;
+    position: absolute; left: 0; right: 0; top: 100%;
+    background: var(--ground); border-bottom: 1px solid var(--line);
+    padding: 8px var(--gutter) 12px; font-size: 17px;
+  }
+  .has-menu.nav-open nav a { display: block; padding: 12px 0; color: var(--ink); border-bottom: 1px solid var(--panel); }
+  .has-menu.nav-open nav li:last-child a { border-bottom: 0; }
+}
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+  .menu-bars, .menu-bars::before, .menu-bars::after { transition: transform .2s ease, top .2s ease, background-color .2s ease; }
+}
