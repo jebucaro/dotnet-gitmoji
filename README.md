@@ -319,10 +319,24 @@ tasks in it.
 
 ---
 
+## Credits
+
+dotnet-gitmoji builds on these open-source projects, all under the MIT License:
+
+- [gitmoji](https://github.com/carloscuesta/gitmoji) by Carlos Cuesta: the commit convention and the bundled gitmoji
+  list
+- [Husky.Net](https://github.com/alirezanet/Husky.Net) by Alireza Sabouri: git hook management
+- [CliFx](https://github.com/Tyrrrz/CliFx) and [CliWrap](https://github.com/Tyrrrz/CliWrap) by Oleksii Holub: command
+  parsing and process execution
+- [Spectre.Console](https://github.com/spectreconsole/spectre.console) by Patrik Svensson, Phil Scott, and Nils
+  Andresen: interactive prompts, tables, and colors
+- [Microsoft.Extensions.DependencyInjection and Microsoft.Extensions.Http](https://github.com/dotnet/runtime),
+  Copyright (c) Microsoft Corporation: dependency injection and HTTP
+- [Fluent Emoji](https://github.com/microsoft/fluentui-emoji), Copyright (c) Microsoft Corporation: the 🐛 package icon
+  (`assets/bug_3d.png`)
+
+---
+
 ## License
 
 MIT, [Jonathan Búcaro](https://github.com/jebucaro)
-
-The package icon (`assets/bug_3d.png`) is the 🐛 bug emoji from
-[Fluent Emoji](https://github.com/microsoft/fluentui-emoji), Copyright (c) Microsoft Corporation, used under the
-[MIT License](https://github.com/microsoft/fluentui-emoji/blob/main/LICENSE).
