@@ -191,32 +191,10 @@ dotnet tool run husky install</code></pre><button type="button" class="copy" ari
 
     <section id="usage" class="wrap" aria-labelledby="usage-title">
       <h2 id="usage-title">Commit like <em>always</em></h2>
-      <div class="grid-2">
-        <div class="card">
-          <h3>Hook mode</h3>
-          <p>After setup, commit normally. The gitmoji picker opens; type to search, Enter to pick.</p>
-          <div class="code" data-copy><pre><code>git commit
+      <p class="section-lede">After setup, commit normally. The gitmoji picker opens: type to search, press Enter to pick.</p>
+      <div class="code" data-copy><pre><code>git commit
 git commit -m "fix login redirect"   # message pre-filled as the title suggestion</code></pre><button type="button" class="copy" aria-label="Copy commands">Copy</button></div>
-          <p class="fine">The hook skips itself during merges, squash merges, amends, and interactive rebases.</p>
-        </div>
-        <div class="card">
-          <h3>Client mode</h3>
-          <p>Prefer no hook? Use <code>dotnet-gitmoji commit</code> as a drop-in for <code>git commit</code>.</p>
-          <div class="code" data-copy><pre><code>dotnet tool run dotnet-gitmoji commit
-dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth --message "Resolves #42"</code></pre><button type="button" class="copy" aria-label="Copy commands">Copy</button></div>
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th scope="col">Option</th><th scope="col">Short</th><th scope="col">Description</th></tr></thead>
-              <tbody>
-                <tr><td><code>--title</code></td><td><code>-t</code></td><td>Commit title (skips the title prompt)</td></tr>
-                <tr><td><code>--scope</code></td><td><code>-s</code></td><td>Commit scope (e.g. <code>feat(auth): ...</code>)</td></tr>
-                <tr><td><code>--message</code></td><td><code>-m</code></td><td>Commit message body</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="fine">Client mode is disabled when a hook is already installed, so the emoji is never applied twice.</p>
-        </div>
-      </div>
+      <p class="fine">The hook skips itself during merges, squash merges, amends, and interactive rebases.</p>
     </section>
 
     <section id="configuration" class="wrap" aria-labelledby="configuration-title">

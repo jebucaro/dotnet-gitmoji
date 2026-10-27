@@ -186,7 +186,9 @@ table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { color: var(--mute); font-weight: 600; }
 .config-example { margin: 20px 0 24px; }
-.config-example .code { margin: 0; }
+.config-example { align-items: stretch; }
+.config-example .code { margin: 0; display: flex; flex-direction: column; }
+.config-example .code pre { flex: 1; display: flex; align-items: center; }
 .keys { margin: 0; }
 .keys dt { margin-top: 10px; }
 .keys dt:first-child { margin-top: 0; }
@@ -212,3 +214,9 @@ th { color: var(--mute); font-weight: 600; }
   .code pre { padding: 46px 16px 14px; }
   .site-header ul { font-size: 14px; gap: 2px 14px; }
 }
+
+/* config example: balance the JSON panel against the key list */
+.config-example .code pre { font-size: 15.5px; line-height: 2.05; padding-block: 20px; }
+.keys dt { margin-top: 12px; }
+.keys dt code { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 700; }
+.keys dd { font-size: 15px; line-height: 1.5; }
