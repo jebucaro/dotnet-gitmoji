@@ -51,7 +51,7 @@
         It installs a <code>prepare-commit-msg</code> hook through Husky.Net, so the hook travels with the repo and is ready on
         every teammate's first commit.</p>
       <div class="code hero-cmd" data-copy><pre><code><span class="prompt" aria-hidden="true">❯ </span>dotnet tool install dotnet-gitmoji</code></pre><button type="button" class="copy" aria-label="Copy command">Copy</button></div>
-      <p class="cue"><a href="#setup">then 4 quick steps to wire the hook →</a></p>
+      <p class="cue"><a href="#setup">then 5 quick steps to wire the hook →</a></p>
       <p class="actions">
         <a class="btn btn-primary" href="#setup">Get started</a>
         <a class="btn btn-secondary" href="https://github.com/jebucaro/dotnet-gitmoji">GitHub</a>
@@ -221,7 +221,8 @@ dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth 
 
     <section id="configuration" class="wrap" aria-labelledby="configuration-title">
       <h2 id="configuration-title">Make it <em>yours</em></h2>
-      <p class="section-lede">Run the wizard. It walks through every option and saves your answers to <code>.gitmojirc.json</code> at the repo root.
+      <p class="section-lede">Run the wizard. It walks through every option and saves your answers to <code>.gitmojirc.json</code> at the repo root,
+        except the color theme, which goes to your personal config.
         Commit that file so every contributor follows the same convention.</p>
       <div class="code" data-copy><pre><code><span class="prompt" aria-hidden="true">❯ </span>dotnet tool run dotnet-gitmoji config</code></pre><button type="button" class="copy" aria-label="Copy command">Copy</button></div>
 
@@ -256,7 +257,7 @@ dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth 
         <li><a href="https://github.com/Tyrrrz/CliFx">CliFx</a> and <a href="https://github.com/Tyrrrz/CliWrap">CliWrap</a> <span>by Oleksii Holub: command parsing and process execution</span></li>
         <li><a href="https://github.com/spectreconsole/spectre.console">Spectre.Console</a> <span>by Patrik Svensson, Phil Scott, and Nils Andresen: interactive prompts, tables, and colors</span></li>
         <li><a href="https://github.com/dotnet/runtime">Microsoft.Extensions.DependencyInjection and Microsoft.Extensions.Http</a> <span>© Microsoft Corporation: dependency injection and HTTP</span></li>
-        <li><a href="https://github.com/microsoft/fluentui-emoji">Fluent Emoji</a> <span>© Microsoft Corporation: the 🐛 icon</span></li>
+        <li><a href="https://github.com/microsoft/fluentui-emoji">Fluent Emoji</a> <span>© Microsoft Corporation: the 🐛 icon (<a href="img/LICENSE-fluentui-emoji.txt">MIT license</a>)</span></li>
       </ul>
     </section>
   </main>
