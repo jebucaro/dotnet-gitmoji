@@ -122,3 +122,77 @@ main > section { padding-block: clamp(48px, 8vw, 88px) 0; }
 .footer-row a { color: var(--mute); }
 .footer-row a:hover { color: var(--accent); }
 .site-footer p a { color: var(--ink); font-weight: 600; }
+
+/* shared section bits */
+.section-lede { max-width: 64ch; color: var(--term-fg); margin: 0 0 20px; }
+.note { color: var(--mute); font-size: 15px; border-left: 2px solid var(--line); padding-left: 12px; }
+.note strong { color: var(--ink); }
+.fine { color: var(--mute); font-size: 14px; margin: 6px 0 0; }
+.callout { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 14px; font-size: 15px; color: var(--term-fg); }
+.callout-warn { border-left-color: var(--yellow); }
+.callout strong { color: var(--ink); }
+
+/* video */
+.video-frame { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--term); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); }
+.video, .video iframe { display: block; width: 100%; height: 100%; border: 0; position: relative; }
+.video img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.play {
+  position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; transform: translate(-50%, -50%);
+  border-radius: 50%; background: var(--accent); box-shadow: 0 8px 30px rgba(0, 0, 0, .45);
+}
+.play::after { content: ""; position: absolute; left: 31px; top: 24px; border-style: solid; border-width: 14px 0 14px 22px; border-color: transparent transparent transparent var(--ground); }
+.video:hover .play, .video:focus-visible .play { background: var(--ink); }
+.caption { color: var(--mute); font-size: 14px; text-align: center; margin: 12px 0 0; }
+
+/* before / after log */
+.terminal { background: var(--term); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.terminal-bar { background: var(--panel); border-bottom: 1px solid var(--line); padding: 8px 16px; font-size: 13px; color: var(--mute); }
+.log { margin: 0; padding: 16px; overflow-x: auto; color: var(--term-fg); font-size: 15px; line-height: 1.7; }
+.log > span { display: block; padding-left: 12px; }
+.log-cmd { padding-left: 0 !important; margin-bottom: 4px; }
+.log-new { border-left: 2px solid var(--accent); }
+.log-setup { margin-bottom: 6px; }
+.log-old { opacity: .42; border-left: 2px solid transparent; }
+.log .hash { color: var(--yellow); }
+.log .ref { color: var(--yellow); }
+.log .head { color: var(--cyan); font-weight: 700; }
+.log .branch { color: var(--green); font-weight: 700; }
+.log, .code pre { font-variant-emoji: emoji; }
+.prompt { color: var(--green); }
+
+/* setup steps */
+.steps { list-style: none; margin: 28px 0 0; padding: 0; }
+.step { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 16px; padding: 22px 0; border-top: 1px solid var(--line); }
+.step:first-child { border-top: 0; }
+.step-num { color: var(--accent); font-weight: 700; font-size: 22px; line-height: 1.3; }
+.step-body > p { margin: 0 0 8px; color: var(--term-fg); }
+.step-body h3 { margin-bottom: 6px; }
+.targets summary { cursor: pointer; color: var(--mute); font-size: 15px; padding: 6px 0; }
+.targets summary:hover { color: var(--ink); }
+.targets .code pre { font-size: 13.5px; }
+@media (max-width: 560px) {
+  .step { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* usage + config */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; min-width: 0; }
+.card .code { background: var(--ground); }
+.card > p { color: var(--term-fg); margin: 0 0 8px; }
+.table-scroll { overflow-x: auto; margin-top: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--mute); font-weight: 600; }
+.config-example { margin: 20px 0 24px; }
+.config-example .code { margin: 0; }
+.keys { margin: 0; }
+.keys dt { margin-top: 10px; }
+.keys dt:first-child { margin-top: 0; }
+.keys dd { margin: 2px 0 0; color: var(--term-fg); font-size: 15px; }
+
+/* credits */
+.credits { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.credits li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.credits li > a { font-weight: 600; }
+.credits span { color: var(--mute); }

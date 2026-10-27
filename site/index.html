@@ -59,30 +59,205 @@
     </section>
 
     <section id="video" class="wrap" aria-label="Demo video">
+      <div class="video-frame">
+        <a class="video" href="https://youtu.be/fve0Xpdbdjk" data-video-id="fve0Xpdbdjk">
+          <img src="img/poster.png" width="1920" height="1080" loading="lazy"
+               alt="Watch the demo: setting up dotnet-gitmoji and picking the bug gitmoji in the commit picker">
+          <span class="play" aria-hidden="true"></span>
+        </a>
+      </div>
+      <p class="caption">Two minutes, from an empty repo to a teammate's first gitmoji commit.</p>
     </section>
 
     <section id="before-after" class="wrap" aria-labelledby="before-after-title">
       <h2 id="before-after-title">Before and <em>after</em></h2>
+      <p class="section-lede">Your old history stays the way it was. Every commit from the setup onward follows the gitmoji convention.</p>
+      <div class="terminal">
+        <div class="terminal-bar"><span>dotnet-gitmoji-demo</span></div>
+<pre class="log" aria-label="git log --oneline after installing dotnet-gitmoji"><span class="log-cmd"><span class="prompt">❯ </span>git log --oneline</span>
+<span class="log-new"><span class="hash">75cef59</span> <span class="ref">(<span class="head">HEAD</span> -&gt; <span class="branch">main</span>)</span> 📝 Document auth endpoints</span>
+<span class="log-new"><span class="hash">22f1b0b</span> ♻️ Extract auth service</span>
+<span class="log-new"><span class="hash">2a6c8a6</span> ✨ Add password reset endpoint</span>
+<span class="log-new"><span class="hash">d5bdbdc</span> 🐛 Fix login redirect</span>
+<span class="log-new log-setup"><span class="hash">62849bc</span> 🔧 Add dotnet-gitmoji hook</span>
+<span class="log-old"><span class="hash">9e79328</span> fix for real this time</span>
+<span class="log-old"><span class="hash">3fba982</span> final fix</span>
+<span class="log-old"><span class="hash">b9d9153</span> wip 2</span>
+<span class="log-old"><span class="hash">d2c6acd</span> Update appsettings.json</span>
+<span class="log-old"><span class="hash">f6c8590</span> fix build</span>
+<span class="log-old"><span class="hash">7afe3cf</span> changes</span>
+<span class="log-old"><span class="hash">3d45706</span> asdf</span>
+<span class="log-old"><span class="hash">ee9a912</span> fix</span>
+<span class="log-old"><span class="hash">0bcc0d1</span> wip</span>
+<span class="log-old"><span class="hash">66ae352</span> Update Program.cs</span>
+<span class="log-old"><span class="hash">51b4882</span> Initial commit</span></pre>
+      </div>
     </section>
 
     <section id="setup" class="wrap" aria-labelledby="setup-title">
       <h2 id="setup-title">Set it up <em>once</em></h2>
+      <p class="section-lede">One developer runs these steps and commits the result. After that, every teammate gets the hook automatically.</p>
+      <p class="note"><strong>Requires</strong> the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 SDK</a> or later.
+        On Windows, also <a href="https://git-scm.com/download/win">Git for Windows</a>: the hook runs under Git Bash.</p>
+
+      <ol class="steps">
+        <li class="step">
+          <span class="step-num mono" aria-hidden="true">01</span>
+          <div class="step-body">
+            <h3>Add both tools to the local tool manifest</h3>
+            <p>Pins Husky.Net and dotnet-gitmoji to the same versions for the whole team.</p>
+            <div class="code" data-copy><pre><code>dotnet new tool-manifest   # skip if the repo already has a dotnet-tools.json
+dotnet tool install Husky
+dotnet tool install dotnet-gitmoji</code></pre><button type="button" class="copy" aria-label="Copy commands">Copy</button></div>
+            <p class="fine">Creates <code>dotnet-tools.json</code> at the repo root. SDKs before .NET 10 create <code>.config/dotnet-tools.json</code>; both work.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num mono" aria-hidden="true">02</span>
+          <div class="step-body">
+            <h3>Initialize Husky.Net</h3>
+            <p>Points git's hooks path at <code>.husky/</code> and adds the Husky.Net helper scripts.</p>
+            <div class="code" data-copy><pre><code>dotnet tool run husky install</code></pre><button type="button" class="copy" aria-label="Copy command">Copy</button></div>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num mono" aria-hidden="true">03</span>
+          <div class="step-body">
+            <h3>Install the gitmoji hook</h3>
+            <p>Adds a <code>prepare-commit-msg</code> hook to <code>.husky/</code>. It's plain text and safe to commit.</p>
+            <div class="code" data-copy><pre><code>dotnet tool run dotnet-gitmoji init --mode shell</code></pre><button type="button" class="copy" aria-label="Copy command">Copy</button></div>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num mono" aria-hidden="true">04</span>
+          <div class="step-body">
+            <h3>Add the MSBuild target</h3>
+            <p>Create <code>Directory.Build.targets</code> at the repo root. It runs <code>dotnet tool restore</code> and
+              <code>dotnet husky install</code> whenever a teammate restores, builds, or opens the project in Visual Studio or Rider.
+              Set <code>HUSKY=0</code> in CI to skip it.</p>
+            <details class="targets" open>
+              <summary><span class="mono">Directory.Build.targets</span></summary>
+              <div class="code" data-copy><pre><code>&lt;Project&gt;
+  &lt;PropertyGroup&gt;
+    &lt;HuskyRoot Condition="'$(HuskyRoot)' == ''"&gt;$(MSBuildThisFileDirectory)&lt;/HuskyRoot&gt;
+    &lt;HuskyToolManifest Condition="'$(HuskyToolManifest)' == '' and Exists('$(HuskyRoot)dotnet-tools.json')"&gt;$(HuskyRoot)dotnet-tools.json&lt;/HuskyToolManifest&gt;
+    &lt;HuskyToolManifest Condition="'$(HuskyToolManifest)' == ''"&gt;$(HuskyRoot).config/dotnet-tools.json&lt;/HuskyToolManifest&gt;
+  &lt;/PropertyGroup&gt;
+  &lt;Target Name="Husky" BeforeTargets="Restore;CollectPackageReferences" Condition="'$(HUSKY)' != 0"
+          Inputs="$(HuskyToolManifest)"
+          Outputs="$(HuskyRoot).husky/_/install.stamp"&gt;
+    &lt;Exec Command="dotnet tool restore"
+          StandardOutputImportance="Low" StandardErrorImportance="High" /&gt;
+    &lt;Exec Command="dotnet husky install"
+          StandardOutputImportance="Low" StandardErrorImportance="High"
+          WorkingDirectory="$(HuskyRoot)" /&gt;
+    &lt;Touch Files="$(HuskyRoot).husky/_/install.stamp" AlwaysCreate="true"
+           Condition="Exists('$(HuskyRoot).husky/_')" /&gt;
+    &lt;ItemGroup&gt;
+      &lt;FileWrites Include="$(HuskyRoot).husky/_/install.stamp" /&gt;
+    &lt;/ItemGroup&gt;
+  &lt;/Target&gt;
+&lt;/Project&gt;</code></pre><button type="button" class="copy" aria-label="Copy Directory.Build.targets">Copy</button></div>
+            </details>
+            <p class="callout callout-warn"><strong>Don't use <code>husky attach</code> instead.</strong> Husky.Net 0.9.1 writes a target
+              that doesn't fire on a solution-level <code>dotnet restore</code> and hardcodes <code>.config/dotnet-tools.json</code>,
+              which .NET 10 no longer creates. <a href="https://github.com/jebucaro/dotnet-gitmoji#first-developer-setup">Why, and a caveat for private feeds</a></p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num mono" aria-hidden="true">05</span>
+          <div class="step-body">
+            <h3>Commit everything</h3>
+            <p>The hook is already active, so this commit gets a gitmoji too.</p>
+            <div class="code" data-copy><pre><code>git add dotnet-tools.json .husky/ Directory.Build.targets   # or .config/dotnet-tools.json on older SDKs
+git commit -m "chore: add dotnet-gitmoji hook"</code></pre><button type="button" class="copy" aria-label="Copy commands">Copy</button></div>
+          </div>
+        </li>
+      </ol>
     </section>
 
     <section id="joining" class="wrap" aria-labelledby="joining-title">
       <h2 id="joining-title">Joining a repo? <em>Just restore</em></h2>
+      <p class="section-lede">If the repo already has a <code>.husky/</code> folder and <code>Directory.Build.targets</code>, one command is all it takes.
+        Opening the project in Visual Studio or Rider works too.</p>
+      <div class="code" data-copy><pre><code><span class="prompt" aria-hidden="true">❯ </span>dotnet restore</code></pre><button type="button" class="copy" aria-label="Copy command">Copy</button></div>
+      <p class="callout"><strong>Use <code>dotnet restore</code>, not <code>dotnet tool restore</code>.</strong> The latter only installs tools and
+        never runs MSBuild, so the hooks path is never set and the gitmoji prompt silently doesn't appear.</p>
+      <p>No project file to trigger a restore? Run the two steps by hand:</p>
+      <div class="code" data-copy><pre><code>dotnet tool restore
+dotnet tool run husky install</code></pre><button type="button" class="copy" aria-label="Copy commands">Copy</button></div>
+      <p class="fine">To remove the hook, run <code>dotnet tool run dotnet-gitmoji remove</code> and follow the cleanup steps it prints.</p>
     </section>
 
     <section id="usage" class="wrap" aria-labelledby="usage-title">
       <h2 id="usage-title">Commit like <em>always</em></h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Hook mode</h3>
+          <p>After setup, commit normally. The gitmoji picker opens; type to search, Enter to pick.</p>
+          <div class="code" data-copy><pre><code>git commit
+git commit -m "fix login redirect"   # message pre-filled as the title suggestion</code></pre><button type="button" class="copy" aria-label="Copy commands">Copy</button></div>
+          <p class="fine">The hook skips itself during merges, squash merges, amends, and interactive rebases.</p>
+        </div>
+        <div class="card">
+          <h3>Client mode</h3>
+          <p>Prefer no hook? Use <code>dotnet-gitmoji commit</code> as a drop-in for <code>git commit</code>.</p>
+          <div class="code" data-copy><pre><code>dotnet tool run dotnet-gitmoji commit
+dotnet tool run dotnet-gitmoji commit --title "fix login redirect" --scope auth --message "Resolves #42"</code></pre><button type="button" class="copy" aria-label="Copy commands">Copy</button></div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">Option</th><th scope="col">Short</th><th scope="col">Description</th></tr></thead>
+              <tbody>
+                <tr><td><code>--title</code></td><td><code>-t</code></td><td>Commit title (skips the title prompt)</td></tr>
+                <tr><td><code>--scope</code></td><td><code>-s</code></td><td>Commit scope (e.g. <code>feat(auth): ...</code>)</td></tr>
+                <tr><td><code>--message</code></td><td><code>-m</code></td><td>Commit message body</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="fine">Client mode is disabled when a hook is already installed, so the emoji is never applied twice.</p>
+        </div>
+      </div>
     </section>
 
     <section id="configuration" class="wrap" aria-labelledby="configuration-title">
       <h2 id="configuration-title">Make it <em>yours</em></h2>
+      <p class="section-lede">Run the wizard. It walks through every option and saves your answers to <code>.gitmojirc.json</code> at the repo root.
+        Commit that file so every contributor follows the same convention.</p>
+      <div class="code" data-copy><pre><code><span class="prompt" aria-hidden="true">❯ </span>dotnet tool run dotnet-gitmoji config</code></pre><button type="button" class="copy" aria-label="Copy command">Copy</button></div>
+
+      <div class="grid-2 config-example">
+        <div class="code" data-copy data-example="gitmojirc"><pre><code>{
+  "emojiFormat": "Emoji",
+  "scopePrompt": true,
+  "maxTitleLength": 48,
+  "normalizeCommitFormat": false,
+  "enforceConvention": true
+}</code></pre><button type="button" class="copy" aria-label="Copy example .gitmojirc.json">Copy</button></div>
+        <dl class="keys">
+          <dt><code>emojiFormat</code></dt><dd>Prefix with the emoji (🐛) or its shortcode (<code>:bug:</code>).</dd>
+          <dt><code>scopePrompt</code></dt><dd>Also ask for a scope, like <code>feat(auth): ...</code>.</dd>
+          <dt><code>maxTitleLength</code></dt><dd>Longest allowed title; <code>null</code> turns the check off.</dd>
+          <dt><code>normalizeCommitFormat</code></dt><dd>Write <code>emoji: title</code> with a colon, conventional-commit style.</dd>
+          <dt><code>enforceConvention</code></dt><dd>Reject commits without a gitmoji when there's no interactive terminal, such as IDE commits.</dd>
+        </dl>
+      </div>
+
+      <p><strong>Themes are personal.</strong> The color theme is never read from <code>.gitmojirc.json</code>; set it with
+        <code>DOTNET_GITMOJI_THEME</code> or in <code>~/.dotnet-gitmoji/config.json</code>.</p>
+      <p><a href="https://github.com/jebucaro/dotnet-gitmoji#configuration-reference">Every option and theme in the README →</a></p>
     </section>
 
     <section id="credits" class="wrap" aria-labelledby="credits-title">
       <h2 id="credits-title">Credits</h2>
+      <p class="section-lede">dotnet-gitmoji builds on these open-source projects, all under the MIT License.</p>
+      <ul class="credits">
+        <li><a href="https://github.com/carloscuesta/gitmoji">gitmoji</a> <span>by Carlos Cuesta: the commit convention and the bundled gitmoji list. See <a href="https://gitmoji.dev">gitmoji.dev</a>.</span></li>
+        <li><a href="https://github.com/alirezanet/Husky.Net">Husky.Net</a> <span>by Alireza Sabouri: git hook management</span></li>
+        <li><a href="https://github.com/Tyrrrz/CliFx">CliFx</a> and <a href="https://github.com/Tyrrrz/CliWrap">CliWrap</a> <span>by Oleksii Holub: command parsing and process execution</span></li>
+        <li><a href="https://github.com/spectreconsole/spectre.console">Spectre.Console</a> <span>by Patrik Svensson, Phil Scott, and Nils Andresen: interactive prompts, tables, and colors</span></li>
+        <li><a href="https://github.com/dotnet/runtime">Microsoft.Extensions.DependencyInjection and Microsoft.Extensions.Http</a> <span>© Microsoft Corporation: dependency injection and HTTP</span></li>
+        <li><a href="https://github.com/microsoft/fluentui-emoji">Fluent Emoji</a> <span>© Microsoft Corporation: the 🐛 icon</span></li>
+      </ul>
     </section>
   </main>
 
