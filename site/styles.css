@@ -224,7 +224,10 @@ th { color: var(--mute); font-weight: 600; }
 /* mobile menu: only when JS is on (.has-menu); without JS the links just wrap */
 .menu-toggle { display: none; }
 @media (max-width: 640px) {
-  .has-menu .header-row { flex-wrap: nowrap; }
+  .has-menu .header-row { flex-wrap: nowrap; gap: 0; }
+  .has-menu nav { order: -1; flex: 0 0 0; }
+  .has-menu .brand { order: -2; }
+  .has-menu .menu-toggle { margin-left: auto; }
   .has-menu .menu-toggle {
     display: inline-flex; align-items: center; justify-content: center;
     width: 44px; height: 44px; margin-right: -10px;
