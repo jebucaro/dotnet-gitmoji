@@ -195,8 +195,20 @@ th { color: var(--mute); font-weight: 600; }
 .keys dd { margin: 2px 0 0; color: var(--term-fg); font-size: 15px; }
 
 /* credits */
-.credits { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.credits li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.credits {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+}
+.credits li { padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.5; }
+.credits li:nth-child(odd) { border-right: 1px solid var(--line); }
+.credits li:nth-last-child(-n + 2):nth-child(odd), .credits li:last-child { border-bottom: 0; }
+@media (max-width: 760px) {
+  .credits { grid-template-columns: minmax(0, 1fr); }
+  .credits li:nth-child(odd) { border-right: 0; }
+  .credits li:nth-last-child(-n + 2):nth-child(odd) { border-bottom: 1px solid var(--line); }
+  .credits li:last-child { border-bottom: 0; }
+}
 .credits li > a { font-weight: 600; }
 .credits span { color: var(--mute); }
 
