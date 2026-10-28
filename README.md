@@ -4,6 +4,8 @@
 [![Downloads](https://img.shields.io/nuget/dt/dotnet-gitmoji?style=flat-square)](https://www.nuget.org/packages/dotnet-gitmoji)
 [![License](https://img.shields.io/github/license/jebucaro/dotnet-gitmoji?style=flat-square)](LICENSE)
 
+![dotnet-gitmoji interactive picker: fuzzy-searching "bug" and selecting the :bug: gitmoji](https://raw.githubusercontent.com/jebucaro/dotnet-gitmoji/main/assets/brand-picker.webp)
+
 `dotnet-gitmoji` brings the [gitmoji](https://gitmoji.dev) commit convention to .NET projects. It installs a
 `prepare-commit-msg` hook through [Husky.Net](https://alirezanet.github.io/Husky.Net/) so the hook travels with the
 repo. When a teammate clones the repo and runs `dotnet restore` (or opens the project in an IDE), the hook is ready on
