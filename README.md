@@ -342,3 +342,5 @@ dotnet-gitmoji builds on these open-source projects, all under the MIT License:
 ## License
 
 MIT, [Jonathan Búcaro](https://github.com/jebucaro)
+
+Built by [Jonathan Búcaro](https://jonathanbucaro.com/) (@jebucaro).

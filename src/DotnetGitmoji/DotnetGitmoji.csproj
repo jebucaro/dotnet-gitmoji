@@ -17,7 +17,7 @@
         <PackageDescription>A gitmoji commit convention CLI tool for .NET projects with interactive and Git hook modes.</PackageDescription>
         <PackageTags>git;gitmoji;commit;cli;dotnet-tool</PackageTags>
         <RepositoryUrl>https://github.com/jebucaro/dotnet-gitmoji</RepositoryUrl>
-        <PackageProjectUrl>https://github.com/jebucaro/dotnet-gitmoji</PackageProjectUrl>
+        <PackageProjectUrl>https://dotnet-gitmoji.com/</PackageProjectUrl>
         <RepositoryType>git</RepositoryType>
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
