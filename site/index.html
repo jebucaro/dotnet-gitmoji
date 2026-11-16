@@ -68,7 +68,7 @@
   <main id="top">
     <section class="hero wrap" aria-labelledby="hero-title">
       <p class="eyebrow"><span class="mono">dotnet-gitmoji</span> <img src="img/bug.png" alt="" width="40" height="40"> <span class="pill">for .NET</span></p>
-      <h1 id="hero-title">Clean git history,<br> from your <em>next commit</em></h1>
+      <h1 id="hero-title"><span>Clean git history,</span> <span>from your <em>next commit</em></span></h1>
       <p class="lede">dotnet-gitmoji brings the <a href="https://gitmoji.dev">gitmoji</a> commit convention to .NET projects.
         It installs a <code>prepare-commit-msg</code> hook through Husky.Net, so the hook travels with the repo and is ready on
         every teammate's first commit.</p>
@@ -83,7 +83,7 @@
     <section id="video" class="wrap" aria-label="Demo video">
       <div class="video-frame">
         <a class="video" href="https://youtu.be/fve0Xpdbdjk" data-video-id="fve0Xpdbdjk">
-          <img src="img/poster.png" width="1920" height="1080" loading="lazy"
+          <img src="img/poster.png" width="1920" height="1080"
                alt="Watch the demo: setting up dotnet-gitmoji and picking the bug gitmoji in the commit picker">
           <span class="play" aria-hidden="true"></span>
         </a>
@@ -235,7 +235,7 @@ git commit -m "fix login redirect"   # message pre-filled as the title suggestio
   "enforceConvention": true
 }</code></pre><button type="button" class="copy" aria-label="Copy example .gitmojirc.json">Copy</button></div>
         <dl class="keys">
-          <dt><code>emojiFormat</code></dt><dd>Prefix with the emoji (🐛) or its shortcode (<code>:bug:</code>).</dd>
+          <dt><code>emojiFormat</code></dt><dd>Prefix with the emoji (<span class="emoji">🐛</span>) or its shortcode (<code>:bug:</code>).</dd>
           <dt><code>scopePrompt</code></dt><dd>Also ask for a scope, like <code>feat(auth): ...</code>.</dd>
           <dt><code>maxTitleLength</code></dt><dd>Longest allowed title; <code>null</code> turns the check off.</dd>
           <dt><code>normalizeCommitFormat</code></dt><dd>Write <code>emoji: title</code> with a colon, conventional-commit style.</dd>
@@ -257,7 +257,7 @@ git commit -m "fix login redirect"   # message pre-filled as the title suggestio
         <li><a href="https://github.com/Tyrrrz/CliFx">CliFx</a> and <a href="https://github.com/Tyrrrz/CliWrap">CliWrap</a> <span>by Oleksii Holub: command parsing and process execution</span></li>
         <li><a href="https://github.com/spectreconsole/spectre.console">Spectre.Console</a> <span>by Patrik Svensson, Phil Scott, and Nils Andresen: interactive prompts, tables, and colors</span></li>
         <li><a href="https://github.com/dotnet/runtime">Microsoft.<wbr>Extensions.<wbr>DependencyInjection and Microsoft.<wbr>Extensions.<wbr>Http</a> <span>© Microsoft Corporation: dependency injection and HTTP</span></li>
-        <li><a href="https://github.com/microsoft/fluentui-emoji">Fluent Emoji</a> <span>© Microsoft Corporation: the 🐛 icon (<a href="img/LICENSE-fluentui-emoji.txt">MIT license</a>)</span></li>
+        <li><a href="https://github.com/microsoft/fluentui-emoji">Fluent Emoji</a> <span>© Microsoft Corporation: the <span class="emoji">🐛</span> icon (<a href="img/LICENSE-fluentui-emoji.txt">MIT license</a>)</span></li>
       </ul>
     </section>
   </main>

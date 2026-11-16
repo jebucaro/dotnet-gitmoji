@@ -1,6 +1,17 @@
 // Progressive enhancement: the page is fully usable without this file.
 
 const COPIED_MS = 2000;
+const COPY_KEYS = /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform ?? navigator.platform) ? "⌘C" : "Ctrl+C";
+
+let clearTimer;
+
+// The live region is shared by every copy button, so it clears on its own timer, not a button's.
+// Repeating an identical message makes some screen readers skip it, so vary it with a no-break space.
+function announce(status, message) {
+  status.textContent = status.textContent === message ? `${message}\u00a0` : message;
+  clearTimeout(clearTimer);
+  clearTimer = setTimeout(() => { status.textContent = ""; }, COPIED_MS);
+}
 
 function codeText(block) {
   const code = block.querySelector("code");
@@ -31,21 +42,23 @@ function initCopy() {
     let timer;
     button.addEventListener("click", async () => {
       const { code, text } = codeText(block);
+      let copied = false;
       try {
         if (!navigator.clipboard) throw new Error("Clipboard API unavailable");
         await navigator.clipboard.writeText(text);
-        button.textContent = "Copied";
-        button.classList.add("is-copied");
-        status.textContent = "Copied to clipboard";
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          button.textContent = "Copy";
-          button.classList.remove("is-copied");
-        }, COPIED_MS);
+        copied = true;
       } catch {
         selectCode(code);
-        status.textContent = "Selected. Press Ctrl+C or Cmd+C to copy.";
       }
+      button.textContent = copied ? "Copied" : `Press ${COPY_KEYS}`;
+      button.classList.remove(copied ? "is-failed" : "is-copied");
+      button.classList.add(copied ? "is-copied" : "is-failed");
+      announce(status, copied ? "Copied to clipboard" : "Selected. Press Ctrl+C or Cmd+C to copy.");
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        button.textContent = "Copy";
+        button.classList.remove("is-copied", "is-failed");
+      }, COPIED_MS);
     });
   });
 }
