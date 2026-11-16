@@ -52,6 +52,7 @@ body {
   background: var(--ground);
   color: var(--ink);
   font: 400 17px/1.6 var(--sans);
+  font-size-adjust: 0.546;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -60,7 +61,7 @@ a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { color: var(--ink); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
-.mono, code, pre { font-family: var(--mono); }
+.mono, code, pre { font-family: var(--mono); font-size-adjust: 0.55; }
 code { font-size: .92em; }
 :not(pre) > code { color: var(--term-fg); background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: .05em .35em; }
 td code { white-space: nowrap; }
@@ -220,7 +221,7 @@ th { color: var(--mute); font-weight: 600; }
 
 .log { white-space: normal; }
 .log > span { white-space: pre; }
-.emoji { font-family: var(--emoji); font-style: normal; }
+.emoji { font-family: var(--emoji); font-style: normal; font-size-adjust: none; }
 
 @media (max-width: 560px) {
   .code pre { padding: 46px 16px 14px; }
