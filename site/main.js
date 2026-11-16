@@ -3,12 +3,14 @@
 const COPIED_MS = 2000;
 const COPY_KEYS = /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform ?? navigator.platform) ? "⌘C" : "Ctrl+C";
 
-let lastAnnouncement = "";
+let clearTimer;
 
+// The live region is shared by every copy button, so it clears on its own timer, not a button's.
 // Repeating an identical message makes some screen readers skip it, so vary it with a no-break space.
 function announce(status, message) {
-  status.textContent = message === lastAnnouncement ? `${message}\u00a0` : message;
-  lastAnnouncement = message;
+  status.textContent = status.textContent === message ? `${message}\u00a0` : message;
+  clearTimeout(clearTimer);
+  clearTimer = setTimeout(() => { status.textContent = ""; }, COPIED_MS);
 }
 
 function codeText(block) {
@@ -56,7 +58,6 @@ function initCopy() {
       timer = setTimeout(() => {
         button.textContent = "Copy";
         button.classList.remove("is-copied", "is-failed");
-        status.textContent = "";
       }, COPIED_MS);
     });
   });
