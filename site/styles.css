@@ -115,6 +115,7 @@ main > section { padding-block: clamp(48px, 8vw, 88px) 0; }
 }
 .copy:hover { color: var(--ink); border-color: var(--accent); }
 .copy.is-copied { color: var(--green); border-color: var(--green); }
+.copy.is-failed { color: var(--yellow); border-color: var(--yellow); }
 
 /* footer */
 .site-footer { margin-top: clamp(56px, 9vw, 96px); border-top: 1px solid var(--line); padding-block: 24px; color: var(--mute); font-size: 15px; }
