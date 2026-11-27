@@ -10,6 +10,7 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
 
     public string RepositoryRoot { get; private set; } = string.Empty;
     public string ToolPathDirectory { get; private set; } = string.Empty;
+    public string NupkgFilePath { get; private set; } = string.Empty;
 
     public async ValueTask InitializeAsync()
     {
@@ -29,6 +30,7 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
             "dotnet",
             ["pack", projectPath, "-c", "Release", "-o", nupkgDirectory, "--nologo"],
             RepositoryRoot,
+            new Dictionary<string, string?> { ["HUSKY"] = "0" },
             timeoutSeconds: 180);
 
         if (packResult.ExitCode != 0)
@@ -38,6 +40,8 @@ public sealed class ToolIntegrationFixture : IAsyncLifetime
                 $"STDOUT:{Environment.NewLine}{packResult.StandardOutput}{Environment.NewLine}" +
                 $"STDERR:{Environment.NewLine}{packResult.StandardError}");
         }
+
+        NupkgFilePath = Path.Combine(nupkgDirectory, $"dotnet-gitmoji.{toolVersion}.nupkg");
 
         ProcessResult installResult = await RunProcessAsync(
             "dotnet",
