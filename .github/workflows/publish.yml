@@ -28,6 +28,8 @@ jobs:
         shell: bash
         env:
           INPUT_VERSION: ${{ inputs.package_version }}
+          REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           VERSION="${INPUT_VERSION#v}"
@@ -44,11 +46,20 @@ jobs:
             echo "Tag $TAG exists; building that commit."
             git checkout --detach "$TAG"
           else
-            echo "Tag $TAG not found; tagging $(git rev-parse --short HEAD) on the default branch."
+            # No tag yet: only ever tag the default branch head, and only if it already carries this version.
+            if [[ "$REF" != "refs/heads/$DEFAULT_BRANCH" ]]; then
+              echo "::error::Tag $TAG does not exist. Run this workflow from '$DEFAULT_BRANCH' to create it, or push the tag first."
+              exit 1
+            fi
+            HEAD_VERSION=$(grep -oP '(?<=<Version>)[^<]+' src/DotnetGitmoji/DotnetGitmoji.csproj | head -n1 || true)
+            if [[ "$HEAD_VERSION" != "$VERSION" ]]; then
+              echo "::error::Cannot tag: csproj <Version> is '$HEAD_VERSION' on $DEFAULT_BRANCH but release version is '$VERSION'"
+              exit 1
+            fi
+            echo "Tag $TAG not found; creating it locally on $(git rev-parse --short HEAD). It is pushed only after build and tests pass."
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag "$TAG"
-            git push origin "$TAG"
           fi
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -59,7 +70,7 @@ jobs:
           EXPECTED: ${{ steps.resolve.outputs.version }}
         run: |
           set -euo pipefail
-          ACTUAL=$(grep -oP '(?<=<Version>)[^<]+' src/DotnetGitmoji/DotnetGitmoji.csproj | head -n1)
+          ACTUAL=$(grep -oP '(?<=<Version>)[^<]+' src/DotnetGitmoji/DotnetGitmoji.csproj | head -n1 || true)
           if [[ "$ACTUAL" != "$EXPECTED" ]]; then
             echo "::error::csproj <Version> is '$ACTUAL' at $(git rev-parse --short HEAD) but release version is '$EXPECTED'"
             exit 1
@@ -98,6 +109,18 @@ jobs:
         with:
           name: nuget-packages
           path: artifacts/*.nupkg
+
+      - name: Push release tag
+        shell: bash
+        env:
+          TAG: v${{ steps.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already on the remote."
+          else
+            git push origin "$TAG"
+          fi
 
       - name: NuGet login (OIDC to temporary API key)
         uses: NuGet/login@v1
