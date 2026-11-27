@@ -12,13 +12,69 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # create/push the release tag and the GitHub release
+      id-token: write   # OIDC token for NuGet trusted publishing
     env:
       HUSKY: 0
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version and release commit
+        id: resolve
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.package_version }}
+          REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          VERSION="${INPUT_VERSION#v}"
+          if [[ -z "$VERSION" ]]; then
+            VERSION=$(grep -oP '(?<=<Version>)[^<]+' src/DotnetGitmoji/DotnetGitmoji.csproj | head -n1)
+          fi
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a valid version"
+            exit 1
+          fi
+          TAG="v$VERSION"
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG exists; building that commit."
+            git checkout --detach "$TAG"
+          else
+            # No tag yet: only ever tag the default branch head, and only if it already carries this version.
+            if [[ "$REF" != "refs/heads/$DEFAULT_BRANCH" ]]; then
+              echo "::error::Tag $TAG does not exist. Run this workflow from '$DEFAULT_BRANCH' to create it, or push the tag first."
+              exit 1
+            fi
+            HEAD_VERSION=$(grep -oP '(?<=<Version>)[^<]+' src/DotnetGitmoji/DotnetGitmoji.csproj | head -n1 || true)
+            if [[ "$HEAD_VERSION" != "$VERSION" ]]; then
+              echo "::error::Cannot tag: csproj <Version> is '$HEAD_VERSION' on $DEFAULT_BRANCH but release version is '$VERSION'"
+              exit 1
+            fi
+            echo "Tag $TAG not found; creating it locally on $(git rev-parse --short HEAD). It is pushed only after build and tests pass."
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify csproj version matches
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          ACTUAL=$(grep -oP '(?<=<Version>)[^<]+' src/DotnetGitmoji/DotnetGitmoji.csproj | head -n1 || true)
+          if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+            echo "::error::csproj <Version> is '$ACTUAL' at $(git rev-parse --short HEAD) but release version is '$EXPECTED'"
+            exit 1
+          fi
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -35,28 +91,18 @@ jobs:
         run: dotnet test --configuration Release --no-build --no-banner
 
       - name: Pack
-        id: pack
         shell: bash
         run: |
           set -euo pipefail
-          VERSION_INPUT="${{ inputs.package_version }}"
           OUTPUT_DIR="${{ github.workspace }}/artifacts"
           mkdir -p "$OUTPUT_DIR"
-
-          if [[ -n "$VERSION_INPUT" ]]; then
-            PACKAGE_VERSION="$VERSION_INPUT"
-          else
-            PACKAGE_VERSION=$(grep -oP '(?<=<Version>)[^<]+' src/DotnetGitmoji/DotnetGitmoji.csproj)
-          fi
 
           dotnet pack src/DotnetGitmoji/DotnetGitmoji.csproj \
             --configuration Release \
             --no-build \
             --nologo \
             --output "$OUTPUT_DIR" \
-            /p:PackageVersion="$PACKAGE_VERSION"
-
-          echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+            /p:PackageVersion="${{ steps.resolve.outputs.version }}"
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v7.0.1
@@ -64,13 +110,31 @@ jobs:
           name: nuget-packages
           path: artifacts/*.nupkg
 
+      - name: Push release tag
+        shell: bash
+        env:
+          TAG: v${{ steps.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already on the remote."
+          else
+            git push origin "$TAG"
+          fi
+
+      - name: NuGet login (OIDC to temporary API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Push package to NuGet.org
-        run: dotnet nuget push "${{ github.workspace }}/artifacts/*.nupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+        run: dotnet nuget push "${{ github.workspace }}/artifacts/*.nupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3.0.0
         with:
-          tag_name: v${{ steps.pack.outputs.package_version }}
-          name: v${{ steps.pack.outputs.package_version }}
+          tag_name: v${{ steps.resolve.outputs.version }}
+          name: v${{ steps.resolve.outputs.version }}
           generate_release_notes: true
           files: artifacts/*.nupkg
