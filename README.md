@@ -33,12 +33,13 @@ Run these steps once in your repo. After you commit the generated files, every t
 
 ```sh
 dotnet new tool-manifest   # skip if the repo already has a dotnet-tools.json
-dotnet tool install Husky
+dotnet tool install Husky --allow-roll-forward
 dotnet tool install dotnet-gitmoji
 ```
 
-This creates `dotnet-tools.json` at the repo root, which pins both tool versions for the whole team. (SDKs before
-.NET 10 created it as `.config/dotnet-tools.json`; both locations work with the steps below.)
+This creates `dotnet-tools.json` at the repo root, which pins both tool versions for the whole team
+(`--allow-roll-forward` lets Husky.Net run on .NET 11+ when .NET 10 is not installed). SDKs before .NET 10 created the
+manifest at `.config/dotnet-tools.json`; both locations work with the steps below.
 
 **Step 2: Initialize Husky.Net**
 
@@ -279,7 +280,7 @@ Global install is convenient for personal use across repos. It does not share th
 would need to install it globally themselves. For shared projects, use the local install path above.
 
 ```sh
-dotnet tool install --global Husky
+dotnet tool install --global Husky --allow-roll-forward
 dotnet tool install --global dotnet-gitmoji
 husky install
 dotnet-gitmoji init --mode shell

@@ -129,9 +129,9 @@
             <h3>Add both tools to the local tool manifest</h3>
             <p>Pins Husky.Net and dotnet-gitmoji to the same versions for the whole team.</p>
             <div class="code" data-copy><pre><code>dotnet new tool-manifest   # skip if the repo already has a dotnet-tools.json
-dotnet tool install Husky
+dotnet tool install Husky --allow-roll-forward
 dotnet tool install dotnet-gitmoji</code></pre><button type="button" class="copy" aria-label="Copy commands">Copy</button></div>
-            <p class="fine">Creates <code>dotnet-tools.json</code> at the repo root. SDKs before .NET 10 create <code>.config/dotnet-tools.json</code>; both work.</p>
+            <p class="fine">Creates <code>dotnet-tools.json</code> at the repo root (<code>--allow-roll-forward</code> lets Husky.Net run on .NET 11+ without .NET 10 installed). SDKs before .NET 10 create <code>.config/dotnet-tools.json</code>; both work.</p>
           </div>
         </li>
         <li class="step">

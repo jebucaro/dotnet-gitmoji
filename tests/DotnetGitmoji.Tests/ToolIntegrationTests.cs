@@ -1,3 +1,6 @@
+using System.IO.Compression;
+using System.Text.Json;
+
 namespace DotnetGitmoji.Tests;
 
 public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
@@ -7,6 +10,27 @@ public sealed class ToolIntegrationTests : IClassFixture<ToolIntegrationFixture>
     public ToolIntegrationTests(ToolIntegrationFixture fixture)
     {
         _fixture = fixture;
+    }
+
+    [Fact]
+    public async Task Package_RuntimeConfig_EnablesMajorRollForward()
+    {
+        Assert.True(File.Exists(_fixture.NupkgFilePath));
+
+        using ZipArchive archive = ZipFile.OpenRead(_fixture.NupkgFilePath);
+        ZipArchiveEntry? entry = archive.GetEntry("tools/net10.0/any/DotnetGitmoji.runtimeconfig.json");
+        Assert.NotNull(entry);
+
+        await using Stream stream = entry.Open();
+        using JsonDocument document = await JsonDocument.ParseAsync(
+            stream,
+            cancellationToken: TestContext.Current.CancellationToken);
+        string? rollForward = document.RootElement
+            .GetProperty("runtimeOptions")
+            .GetProperty("rollForward")
+            .GetString();
+
+        Assert.Equal("Major", rollForward);
     }
 
     [Fact]

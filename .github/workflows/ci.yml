@@ -11,16 +11,24 @@ concurrency:
 
 jobs:
   test:
-    name: test (${{ matrix.os }})
+    name: test (${{ matrix.os }}, .NET ${{ matrix.dotnet }})
     runs-on: ${{ matrix.os }}
     env:
       HUSKY: 0
+      DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet-${{ matrix.dotnet }}
+      DOTNET_ROOT: ${{ runner.temp }}/dotnet-${{ matrix.dotnet }}
+      DOTNET_ROOT_X64: ${{ runner.temp }}/dotnet-${{ matrix.dotnet }}
+      DOTNET_ROOT_ARM64: ${{ runner.temp }}/dotnet-${{ matrix.dotnet }}
+      DOTNET_MULTILEVEL_LOOKUP: 0
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
           - windows-latest
+        dotnet:
+          - 10.0.x
+          - 11.0.x
 
     steps:
       - name: Checkout
@@ -29,7 +37,33 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: ${{ matrix.dotnet }}
+
+      - name: Isolate .NET runtime for matrix version
+        shell: pwsh
+        run: |
+          if ("${{ matrix.dotnet }}" -eq "11.0.x") {
+            # actions/setup-dotnet bootstraps an LTS runtime alongside non-LTS SDKs;
+            # remove any 10.x shared runtime so this job genuinely tests a .NET 11-only machine.
+            Get-ChildItem -Path (Join-Path $env:DOTNET_INSTALL_DIR "shared") -Directory -ErrorAction SilentlyContinue |
+              ForEach-Object { Get-ChildItem -Path $_.FullName -Filter "10.*" -Directory -ErrorAction SilentlyContinue } |
+              Remove-Item -Recurse -Force
+          }
+
+          $runtimes = dotnet --list-runtimes | Out-String
+          Write-Host $runtimes
+          $expectedMajor = ("${{ matrix.dotnet }}" -split '\.')[0]
+          if ($runtimes -notmatch "Microsoft\.NETCore\.App $expectedMajor\.") {
+            throw "Expected Microsoft.NETCore.App $expectedMajor.x runtime was not found."
+          }
+          if ("${{ matrix.dotnet }}" -eq "11.0.x" -and $runtimes -match "Microsoft\.NETCore\.App 10\.") {
+            throw ".NET 10 runtime is still present in the .NET 11-only test environment."
+          }
+
+      - name: Verify local tools
+        run: |
+          dotnet tool restore
+          dotnet husky --version
 
       - name: Test
         run: dotnet test --no-banner
